@@ -1,0 +1,22 @@
+{
+  "name": "allex_leveldblib",
+  "version": "0.1.0",
+  "description": "AllexJS lib containing levelup and helpers",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git@gitlab.hers.rs:allex_libs/leveldb"
+  },
+  "dependencies": {
+    "level": "1.3.0"
+  },
+  "keywords": [
+    "AllexJS",
+    "leveldb"
+  ],
+  "author": "HERS Belgrade",
+  "license": "ISC"
+}
