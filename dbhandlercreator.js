@@ -56,6 +56,9 @@ function createDBHandler (execlib) {
       prophash.starteddefer.resolve(true);
     }
   };
+  LevelDBHandler.prototype.getReadStream = function (options) {
+    return this.db.createReadStream(options);
+  };
 
   return LevelDBHandler;
 }
