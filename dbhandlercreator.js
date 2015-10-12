@@ -29,6 +29,7 @@ function createDBHandler (execlib) {
     this.db = null;
     this.dbput = null;
     this.dbget = null;
+    this.dbdel = null;
     if (prophash.initiallyemptydb) {
       this.setDB(new FakeDB());
       child_process.exec('rm -rf '+prophash.dbname, this.createDB.bind(this, prophash));
@@ -46,6 +47,7 @@ function createDBHandler (execlib) {
     this.db = db;
     this.dbput = q.nbind(this.db.put, this.db);
     this.dbget = q.nbind(this.db.get, this.db);
+    this.dbdel = q.nbind(this.db.del, this.db);
     if (_db && _db.transferCommands) {
       _db.transferCommands(this.db);
     }
