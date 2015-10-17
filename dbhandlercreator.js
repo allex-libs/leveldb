@@ -38,9 +38,16 @@ function createDBHandler (execlib) {
     }
   }
   LevelDBHandler.prototype.destroy = function () {
+    if (!this.db) {
+      return;
+    }
+    if (this.db.close) {
+      this.db.close();
+    }
     if (this.db.destroy) {
       this.db.destroy();
     }
+    this.db = null;
   };
   LevelDBHandler.prototype.setDB = function (db) {
     var _db = this.db;
@@ -57,6 +64,20 @@ function createDBHandler (execlib) {
     if (prophash.starteddefer) {
       prophash.starteddefer.resolve(true);
     }
+  };
+  function streamTraverser(stream, cb, item) {
+    cb(item, stream);
+  }
+  function streamEnder(defer, stream) {
+    stream.removeAllListeners();
+    defer.resolve(true);
+  }
+  LevelDBHandler.prototype.traverse = function (cb, options) {
+    var stream = this.getReadStream(options),
+      d = options.defer || q.defer();
+    stream.on('data', streamTraverser.bind(null, stream, cb));
+    stream.on('end', streamEnder.bind(null, d, stream));
+    return d.promise;
   };
   LevelDBHandler.prototype.getReadStream = function (options) {
     return this.db.createReadStream(options);

@@ -13,6 +13,7 @@ function createLib(execlib) {
   return {
     createDBHandler: creator,
     LevelDBHandler: LevelDBHandler,
+    VerbatimDecoder: require('./codecs/verbatimdecodercreator')(execlib),
     Int32Codec: require('./codecs/int32codeccreator')(execlib)
   };
 }
