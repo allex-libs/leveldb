@@ -14,7 +14,10 @@ function createLib(execlib) {
     createDBHandler: creator,
     LevelDBHandler: LevelDBHandler,
     VerbatimDecoder: require('./codecs/verbatimdecodercreator')(execlib),
+    Int8Codec: require('./codecs/int8codeccreator')(execlib)
+    Int16Codec: require('./codecs/int16codeccreator')(execlib)
     Int32Codec: require('./codecs/int32codeccreator')(execlib)
+    Int64Codec: require('./codecs/int64codeccreator')(execlib)
   };
 }
 
