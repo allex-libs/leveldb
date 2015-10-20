@@ -26,10 +26,11 @@ function createDBHandler (execlib) {
 
 
   function LevelDBHandler(prophash) {
+    this.dbname = prophash.dbname;
     this.db = null;
-    this.dbput = null;
-    this.dbget = null;
-    this.dbdel = null;
+    this.put = null;
+    this.get = null;
+    this.del = null;
     if (prophash.initiallyemptydb) {
       this.setDB(new FakeDB());
       child_process.exec('rm -rf '+prophash.dbname, this.createDB.bind(this, prophash));
@@ -49,20 +50,20 @@ function createDBHandler (execlib) {
     }
     this.db = null;
   };
-  LevelDBHandler.prototype.setDB = function (db) {
+  LevelDBHandler.prototype.setDB = function (db, prophash) {
     var _db = this.db;
     this.db = db;
-    this.dbput = q.nbind(this.db.put, this.db);
-    this.dbget = q.nbind(this.db.get, this.db);
-    this.dbdel = q.nbind(this.db.del, this.db);
+    this.put = q.nbind(this.db.put, this.db);
+    this.get = q.nbind(this.db.get, this.db);
+    this.del = q.nbind(this.db.del, this.db);
     if (_db && _db.transferCommands) {
       _db.transferCommands(this.db);
     }
   };
   LevelDBHandler.prototype.createDB = function (prophash) {
-    this.setDB(levelup(prophash.dbname, lib.extend({}, prophash.dbcreationoptions)));
+    this.setDB(levelup(prophash.dbname, lib.extend({}, prophash.dbcreationoptions)), prophash);
     if (prophash.starteddefer) {
-      prophash.starteddefer.resolve(true);
+      prophash.starteddefer.resolve(this);
     }
   };
   function streamTraverser(stream, cb, item) {
@@ -74,12 +75,25 @@ function createDBHandler (execlib) {
   }
   LevelDBHandler.prototype.traverse = function (cb, options) {
     var stream = this.getReadStream(options),
-      d = options.defer || q.defer();
+      d = (options ? options.defer : null) || q.defer();
     stream.on('data', streamTraverser.bind(null, stream, cb));
     stream.on('end', streamEnder.bind(null, d, stream));
     return d.promise;
   };
+  function pusher(container, item) {
+    container.push(item);
+  }
+  LevelDBHandler.prototype.readInto = function (container, options) {
+    return this.traverse(pusher.bind(null, container), options);
+  }; 
+  function notifier(defer, item) {
+    defer.notify(item);
+  }
+  LevelDBHandler.prototype.streamInto = function (defer, options) {
+    return this.traverse(notifier.bind(null, defer), options);
+  }
   LevelDBHandler.prototype.getReadStream = function (options) {
+    //console.log('createReadStream', options);
     return this.db.createReadStream(options);
   };
 
