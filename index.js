@@ -10,9 +10,21 @@ function createLib(execlib) {
     return new LevelDBHandler(hash);
   }
 
+  var _nullcodec = {
+    encode: function (val) {
+      return new Buffer(0);
+    },
+    decode: function (buffer) {
+      return null;
+    },
+    buffer: true,
+    type: 'null'
+  }
+
   var ret = {
     createDBHandler: creator,
     LevelDBHandler: LevelDBHandler,
+    NullCodec:_nullcodec,
     VerbatimDecoder: require('./codecs/verbatimdecodercreator')(execlib),
     Int8Codec: require('./codecs/int8codeccreator')(execlib),
     Int16Codec: require('./codecs/int16codeccreator')(execlib),
