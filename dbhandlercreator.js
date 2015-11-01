@@ -32,6 +32,7 @@ function createDBHandler (execlib) {
     this.get = null;
     this.del = null;
     if (prophash.initiallyemptydb) {
+      console.log(prophash.dbname, 'initiallyemptydb!');
       this.setDB(new FakeDB());
       child_process.exec('rm -rf '+prophash.dbname, this.createDB.bind(this, prophash));
     } else {
@@ -61,7 +62,14 @@ function createDBHandler (execlib) {
     }
   };
   LevelDBHandler.prototype.createDB = function (prophash) {
-    this.setDB(levelup(prophash.dbname, lib.extend({}, prophash.dbcreationoptions)), prophash);
+    levelup(prophash.dbname, lib.extend({}, prophash.dbcreationoptions), this.onLeveDBCreated.bind(this, prophash));
+  };
+  LevelDBHandler.prototype.onLeveDBCreated = function (prophash, err, db) {
+    if (err) {
+      lib.runNext(this.createDB.bind(this, prophash), 1000);
+      return;
+    }
+    this.setDB(db, prophash);
     if (prophash.starteddefer) {
       prophash.starteddefer.resolve(this);
     }
