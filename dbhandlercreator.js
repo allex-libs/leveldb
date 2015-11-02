@@ -73,9 +73,9 @@ function createDBHandler (execlib) {
     }
   };
   LevelDBHandler.prototype.createDB = function (prophash) {
-    levelup(prophash.dbname, lib.extend({}, prophash.dbcreationoptions), this.onLeveDBCreated.bind(this, prophash));
+    levelup(prophash.dbname, lib.extend({}, prophash.dbcreationoptions), this.onLevelDBCreated.bind(this, prophash));
   };
-  LevelDBHandler.prototype.onLeveDBCreated = function (prophash, err, db) {
+  LevelDBHandler.prototype.onLevelDBCreated = function (prophash, err, db) {
     if (!this.dbname) {
       return;
     }
