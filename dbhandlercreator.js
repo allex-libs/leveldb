@@ -26,7 +26,17 @@ function createDBHandler (execlib) {
 
 
   function LevelDBHandler(prophash) {
+    var err;
     this.dbname = prophash.dbname;
+    if (!this.dbname) {
+      if (prophash.starteddefer) {
+        err = new lib.Error('NO_DBNAME_IN_PROPERTYHASH','Property hash for LevelDBHandler misses the dbname property');
+        prophash.starteddefer.reject(err);
+        return;
+      } else {
+        throw err;
+      }
+    }
     this.db = null;
     this.put = null;
     this.get = null;
@@ -50,6 +60,7 @@ function createDBHandler (execlib) {
       this.db.destroy();
     }
     this.db = null;
+    this.dbname = null;
   };
   LevelDBHandler.prototype.setDB = function (db, prophash) {
     var _db = this.db;
@@ -65,7 +76,11 @@ function createDBHandler (execlib) {
     levelup(prophash.dbname, lib.extend({}, prophash.dbcreationoptions), this.onLeveDBCreated.bind(this, prophash));
   };
   LevelDBHandler.prototype.onLeveDBCreated = function (prophash, err, db) {
+    if (!this.dbname) {
+      return;
+    }
     if (err) {
+      console.error(prophash.dbname, 'could not be started now', err);
       lib.runNext(this.createDB.bind(this, prophash), 1000);
       return;
     }

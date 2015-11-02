@@ -60,7 +60,7 @@ function createDBArray(execlib, leveldblib) {
         this.head--;
       }
     }
-    console.log('init done', this.head, this.tail, prophash.dbname);
+    console.log('init done', this.head, this.tail, prophash.dbname, prophash.starteddefer);
     if (prophash.starteddefer) {
       prophash.starteddefer.resolve(this);
     }
@@ -101,6 +101,12 @@ function createDBArray(execlib, leveldblib) {
     }
   };
   DBArrayHandler.prototype.push = function (item, defer) {
+    /* for testing the no-operation
+    if (defer) {
+      defer.resolve({});
+    }
+    return;
+    */
     if (this.head === Infinity) {
       if (defer) {
         defer.reject(_notInitiatedError);
