@@ -62,10 +62,27 @@ function createDBHandler (execlib) {
     this.db = null;
     this.dbname = null;
   };
+
+  function properPutterCB(key, val, defer, err) {
+    if (err) {
+      defer.reject(err);
+    } else {
+      defer.resolve([key, val]);
+    }
+  }
+
+  function createProperPutter(db) {
+    return function (key, val, options) {
+      var d = q.defer();
+      db.put(key, val, options, properPutterCB.bind(null, key, val, d));
+      return d.promise;
+    };
+  }
   LevelDBHandler.prototype.setDB = function (db, prophash) {
     var _db = this.db;
     this.db = db;
-    this.put = q.nbind(this.db.put, this.db);
+    //this.put = q.nbind(this.db.put, this.db);
+    this.put = createProperPutter(this.db);
     this.get = q.nbind(this.db.get, this.db);
     this.del = q.nbind(this.db.del, this.db);
     if (_db && _db.transferCommands) {
@@ -88,6 +105,50 @@ function createDBHandler (execlib) {
     if (prophash.starteddefer) {
       prophash.starteddefer.resolve(this);
     }
+  };
+  function putterAfterProcessor(handler, defer, key, item) {
+    if (item === null) {
+      defer.resolve(null);
+      return;
+    }
+    handler.put(key, item).then(
+      defer.resolve.bind(defer),
+      defer.reject.bind(defer)
+    );
+  }
+  function offerrerToProcessor(handler, defer, key, processorfunc, item) {
+    var procret = processorfunc(item, key);
+    if (procret && 'function' === typeof procret.then){
+      procret.then(
+        putterAfterProcessor.bind(null, handler, defer, key),
+        function (error) {
+          console.error('Error in putting data during upsert!', error);
+          defer.reject(error);
+        }
+        //defer.reject.bind(defer)
+      );
+    } else {
+      putterAfterProcessor(handler, defer, key, procret);
+    }
+  }
+  function errorOfferrerToProcessor(handler, defer, key, processorfunc, error) {
+    if (error.notFound) {
+      offerrerToProcessor(handler, defer, key, processorfunc, null);
+    } else {
+      console.error('Error in getting data for upsert!', error);
+      defer.reject(error);
+    }
+  }
+  LevelDBHandler.prototype.upsert = function (key, processorfunc) {
+    if ('function' !== typeof processorfunc) {
+      return q.reject(lib.Error('PROCESSOR_NOT_A_FUNCTION'));
+    }
+    var d = q.defer();
+    this.get(key).then(
+      offerrerToProcessor.bind(null, this, d, key, processorfunc),
+      errorOfferrerToProcessor.bind(null, this, d, key, processorfunc)
+    );
+    return d.promise;
   };
   function streamTraverser(stream, cb, item) {
     cb(item, stream);

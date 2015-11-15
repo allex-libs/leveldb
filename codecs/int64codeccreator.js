@@ -1,4 +1,5 @@
 function createInt64Codec(execlib) {
+  /* problematic
   return {
     encode: function(num) {
       var ret = new Buffer(8);
@@ -12,6 +13,7 @@ function createInt64Codec(execlib) {
     buffer: true,
     type: 'int64'
   };
+  */
 }
 
 module.exports = createInt64Codec;

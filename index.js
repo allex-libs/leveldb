@@ -19,17 +19,18 @@ function createLib(execlib) {
     },
     buffer: true,
     type: 'null'
-  }
+  };
+  var numchecker = require('./numcheckercreator')(execlib);
 
   var ret = {
     createDBHandler: creator,
     LevelDBHandler: LevelDBHandler,
     NullCodec:_nullcodec,
     VerbatimDecoder: require('./codecs/verbatimdecodercreator')(execlib),
-    Int8Codec: require('./codecs/int8codeccreator')(execlib),
-    Int16Codec: require('./codecs/int16codeccreator')(execlib),
-    Int32Codec: require('./codecs/int32codeccreator')(execlib),
-    Int64Codec: require('./codecs/int64codeccreator')(execlib)
+    Int8Codec: require('./codecs/int8codeccreator')(execlib, numchecker),
+    Int16Codec: require('./codecs/int16codeccreator')(execlib, numchecker),
+    Int32Codec: require('./codecs/int32codeccreator')(execlib, numchecker),
+    Int64Codec: require('./codecs/int64codeccreator')(execlib, numchecker)
   };
 
   ret.QueueableMixin = require('./queueablemixincreator')(execlib, ret);
