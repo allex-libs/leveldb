@@ -103,6 +103,7 @@ function createDBHandler (execlib) {
     }
     this.setDB(db, prophash);
     if (prophash.starteddefer) {
+      console.log(this.dbname, 'resolving starteddefer');
       prophash.starteddefer.resolve(this);
     }
   };
@@ -117,7 +118,13 @@ function createDBHandler (execlib) {
     );
   }
   function offerrerToProcessor(handler, defer, key, processorfunc, item) {
-    var procret = processorfunc(item, key);
+    var procret;
+    try {
+      procret = processorfunc(item, key);
+    } catch(e) {
+      defer.reject(e);
+      return;
+    }
     if (procret && 'function' === typeof procret.then){
       procret.then(
         putterAfterProcessor.bind(null, handler, defer, key),
@@ -144,6 +151,9 @@ function createDBHandler (execlib) {
       return q.reject(lib.Error('PROCESSOR_NOT_A_FUNCTION'));
     }
     var d = q.defer();
+    if ('function' !== typeof this.get) {
+      console.log('what am I?', this);
+    }
     this.get(key).then(
       offerrerToProcessor.bind(null, this, d, key, processorfunc),
       errorOfferrerToProcessor.bind(null, this, d, key, processorfunc)

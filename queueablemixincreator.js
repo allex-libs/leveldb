@@ -76,8 +76,10 @@ function createQueueableMixin (execlib) {
     }
   };
   function qresolver(item) {
-    if (item[2]) {
-      item[2].resolve(item[1]);
+    var d = item[2];
+    //console.log('qresolver?', item, d);
+    if (d && d.resolve ) {
+      d.resolve(item[1]);
     }
   }
   function qrejecter(err, item) {
@@ -86,7 +88,9 @@ function createQueueableMixin (execlib) {
     }
   }
   QueueableMixin.prototype.finish = function (q, err) {
+    //console.log('finish', q, err);
     if (err) {
+      console.trace();
       console.log('error in batch', err);
       if (q) {
         consume(q,qrejecter.bind(null, err));

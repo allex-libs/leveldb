@@ -101,6 +101,9 @@ function createDBArray(execlib, leveldblib) {
     }
   };
   DBArrayHandler.prototype.push = function (item, defer) {
+    if (!defer && defer!==0) {
+      defer = q.defer();
+    }
     /* for testing the no-operation
     if (defer) {
       defer.resolve({});
@@ -117,12 +120,15 @@ function createDBArray(execlib, leveldblib) {
     } else {
       this.dbPerform('put', [this.tail++, item], defer);
     }
+    if (defer) {
+      return defer.promise;
+    }
   };
   DBArrayHandler.prototype.manyPutterStartFromOne = function(container, item) {
-    container.push(['put', [++this.tail, item]]);
+    container.push(['put', [++this.tail, item]], 0);
   };
   DBArrayHandler.prototype.manyPutter = function(container, item) {
-    container.push(['put', [this.tail++, item]]);
+    container.push(['put', [this.tail++, item]], 0);
   };
   DBArrayHandler.prototype.pushMany = function (itemcontainer, defer) {
     console.log(this.head, this.tail, 'pushMany', itemcontainer.length);
@@ -141,10 +147,10 @@ function createDBArray(execlib, leveldblib) {
     }
   };
   DBArrayHandler.prototype.manyShifterStartFromOne = function(container) {
-    container.push(['del', [++this.head]]);
+    container.push(['del', [++this.head]], 0);
   };
   DBArrayHandler.prototype.manyShifter = function(container) {
-    container.push(['del', [this.head++]]);
+    container.push(['del', [this.head++]], 0);
   }
   DBArrayHandler.prototype.shiftMany = function (howmany, defer) {
     this.whenFree(this.doShiftMany.bind(this, howmany, defer));
@@ -186,10 +192,10 @@ function createDBArray(execlib, leveldblib) {
     }
   };
   DBArrayHandler.prototype.manyPopperStartFromOne = function(container, item) {
-    container.push(['del', [this.tail--]]);
+    container.push(['del', [this.tail--]], 0);
   };
   DBArrayHandler.prototype.manyPopper = function(container, item) {
-    container.push(['del', [--this.tail]]);
+    container.push(['del', [--this.tail]], 0);
   }
   DBArrayHandler.prototype.popMany = function (howmany, defer) {
     var items = [],
