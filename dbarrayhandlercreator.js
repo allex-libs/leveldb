@@ -60,7 +60,7 @@ function createDBArray(execlib, leveldblib) {
         this.head--;
       }
     }
-    console.log('init done', this.head, this.tail, prophash.dbname, prophash.starteddefer);
+    console.log('init done', this.head, this.tail, prophash.dbname, prophash.starteddefer ? 'with' : 'without', 'starteddefer');
     if (prophash.starteddefer) {
       prophash.starteddefer.resolve(this);
     }

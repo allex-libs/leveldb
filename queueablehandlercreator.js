@@ -64,7 +64,7 @@ function createQueueableHandler(execlib, leveldblib) {
     if (_q.length < 1) {
       return q(true);
     }
-    console.log('processQ', _q.length);
+    //console.log('processQ', _q.length);
     this.begin();
     var batch = this.db.batch();
     consume(_q, putter.bind(null, batch));

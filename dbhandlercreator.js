@@ -103,10 +103,12 @@ function createDBHandler (execlib) {
     }
     this.setDB(db, prophash);
     if (prophash.starteddefer) {
-      console.log(this.dbname, 'resolving starteddefer');
+      //console.log(this.dbname, 'resolving starteddefer');
       prophash.starteddefer.resolve(this);
     }
   };
+
+  //  Upsert section //
   function putterAfterProcessor(handler, defer, key, item) {
     if (item === null) {
       defer.resolve(null);
@@ -118,35 +120,50 @@ function createDBHandler (execlib) {
     );
   }
   function offerrerToProcessor(handler, defer, key, processorfunc, item) {
+    //console.log('offerrerToProcessor', key, '=>', item);
     var procret;
     try {
       procret = processorfunc(item, key);
     } catch(e) {
+      try {
       defer.reject(e);
+      } catch(e) {
+        console.error(e.stack);
+        console.error(e);
+      }
+      //console.log('processorfunc threw', e);
       return;
     }
     if (procret && 'function' === typeof procret.then){
       procret.then(
         putterAfterProcessor.bind(null, handler, defer, key),
-        function (error) {
-          console.error('Error in putting data during upsert!', error);
-          defer.reject(error);
-        }
-        //defer.reject.bind(defer)
+        defer.reject.bind(defer)
       );
     } else {
       putterAfterProcessor(handler, defer, key, procret);
     }
   }
-  function errorOfferrerToProcessor(handler, defer, key, processorfunc, error) {
+  function defaultEvaluator(defaultrecord, defer) {
+    if ('function' === typeof defaultrecord) {
+      try {
+        return defaultrecord();
+      } catch (e) {
+        defer.reject(e);
+        return null;
+      }
+    }
+    return defaultrecord;
+  }
+  function errorOfferrerToProcessor(handler, defer, key, processorfunc, defaultrecord, error) {
     if (error.notFound) {
-      offerrerToProcessor(handler, defer, key, processorfunc, null);
+      //console.log('record not found for', key);
+      offerrerToProcessor(handler, defer, key, processorfunc, defaultEvaluator(defaultrecord, defer) || null);
     } else {
       console.error('Error in getting data for upsert!', error);
       defer.reject(error);
     }
   }
-  LevelDBHandler.prototype.upsert = function (key, processorfunc) {
+  LevelDBHandler.prototype.upsert = function (key, processorfunc, defaultrecord) {
     if ('function' !== typeof processorfunc) {
       return q.reject(lib.Error('PROCESSOR_NOT_A_FUNCTION'));
     }
@@ -156,10 +173,52 @@ function createDBHandler (execlib) {
     }
     this.get(key).then(
       offerrerToProcessor.bind(null, this, d, key, processorfunc),
-      errorOfferrerToProcessor.bind(null, this, d, key, processorfunc)
+      errorOfferrerToProcessor.bind(null, this, d, key, processorfunc, defaultrecord)
     );
     return d.promise;
   };
+  // end of upsert section //
+
+
+  // specialized upserters for bufferlib-based codecs //
+  function incmapper(fieldindex, amount, item, itemindex) {
+    if (itemindex!==fieldindex) {
+      return item;
+    }
+    return item+amount;
+  }
+  function incer(fieldindex, amount, options, record) {
+    if (!lib.isArray(record)) {
+      var msg = 'Received record '+record+'. Did you specify a default record for inc?';
+      console.error(msg);
+      throw new lib.Error('INVALID_RECORD', msg);
+    }
+    var should = true;
+    if (lib.isFunction(options.criterionfunction)) {
+      should = options.criterionfunction(record, amount);
+    }
+    if (should) {
+      return record.map(incmapper.bind(null, fieldindex, options.dec ? -amount : amount));
+    } else {
+      return null;
+    }
+  }
+
+  LevelDBHandler.prototype.inc = function (key, fieldindex, amount, options) {
+    //console.log('inc with defaultrecord', options.defaultrecord);
+    return this.upsert(key, incer.bind(null, fieldindex, amount, options), options.defaultrecord);
+  };
+
+  LevelDBHandler.prototype.dec = function (key, fieldindex, amount, options) {
+    options = options || {};
+    options.dec = true;
+    return this.inc(key, fieldindex, amount, options);
+  };
+
+  // end of specialized upserters //
+
+
+  // reading/traversing section //
   function streamTraverser(stream, cb, item) {
     cb(item, stream);
   }
@@ -190,6 +249,7 @@ function createDBHandler (execlib) {
     //console.log('createReadStream', options);
     return this.db.createReadStream(options);
   };
+  // end of reading/traversing section//
 
   return LevelDBHandler;
 }
