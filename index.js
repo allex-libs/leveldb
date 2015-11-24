@@ -37,6 +37,8 @@ function createLib(execlib) {
   ret.QueueableHandler = require('./queueablehandlercreator')(execlib, ret);
   ret.DBArray = require('./dbarrayhandlercreator')(execlib, ret);
   ret.Shift2Pusher = require('./shift2pushercreator')(execlib, ret);
+  ret.KnownLengthInsertJob = require('./knownlengthinsertjobcreator')(execlib);
+  ret.FiniteLengthInsertJob = require('./finitelengthinsertjobcreator')(execlib, ret.KnownLengthInsertJob);
 
   return ret;
 }
