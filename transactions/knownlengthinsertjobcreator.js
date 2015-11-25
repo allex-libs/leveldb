@@ -1,37 +1,19 @@
-function createKnownLengthInsertJob(execlib) {
+function createKnownLengthInsertJob(execlib, JobBase) {
   'use strict';
   var lib = execlib.lib,
     q = lib.q;
   function KnownLengthInsertJob(db) {
+    JobBase.call(this);
     this.db = db;
     this.toinsert = null;
     this.inserted = 0;
-    this.defer = q.defer();
-    this.result = null;
-    this.error = null;
   }
+  lib.inherit(KnownLengthInsertJob, JobBase);
   KnownLengthInsertJob.prototype.destroy = function () {
-    if (this.defer) {
-      if (this.error) {
-        this.defer.reject(this.error);
-      } else {
-        this.defer.resolve(this.result);
-      }
-    }
-    this.error = null;
-    this.result = null;
-    this.defer = null;
     this.inserted = null;
     this.toinsert = null;
     this.db = null;
-  };
-  KnownLengthInsertJob.prototype.resolve = function (result) {
-    this.result = result;
-    this.destroy();
-  };
-  KnownLengthInsertJob.prototype.reject = function (error) {
-    this.error = error;
-    this.destroy();
+    JobBase.prototype.destroy.call(this);
   };
   KnownLengthInsertJob.prototype.doCheck = function () {
     if (this.inserted === this.toinsert) {

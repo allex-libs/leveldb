@@ -37,8 +37,13 @@ function createLib(execlib) {
   ret.QueueableHandler = require('./queueablehandlercreator')(execlib, ret);
   ret.DBArray = require('./dbarrayhandlercreator')(execlib, ret);
   ret.Shift2Pusher = require('./shift2pushercreator')(execlib, ret);
-  ret.KnownLengthInsertJob = require('./knownlengthinsertjobcreator')(execlib);
-  ret.FiniteLengthInsertJob = require('./finitelengthinsertjobcreator')(execlib, ret.KnownLengthInsertJob);
+  var JobBase = require('./transactions/jobbasecreator')(execlib);
+  ret.JobBase = JobBase;
+  ret.KnownLengthInsertJob = require('./transactions/knownlengthinsertjobcreator')(execlib, JobBase);
+  ret.FiniteLengthInsertJob = require('./transactions/finitelengthinsertjobcreator')(execlib, ret.KnownLengthInsertJob);
+  ret.PromiseChainerJob = require('./transactions/promisechainerjobcreator')(execlib, JobBase);
+  ret.ChainedOperationsJob = require('./transactions/chainedoperationsjobcreator')(execlib, JobBase);
+  ret.JobCollection = require('./jobcollectioncreator')(execlib);
 
   return ret;
 }
