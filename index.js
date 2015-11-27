@@ -4,6 +4,7 @@ function createLib(execlib) {
   'use strict';
   var lib = execlib.lib,
     q = lib.q,
+    qlib = lib.qlib,
     LevelDBHandler = require('./dbhandlercreator')(execlib);
 
   function creator(hash) {
@@ -37,13 +38,9 @@ function createLib(execlib) {
   ret.QueueableHandler = require('./queueablehandlercreator')(execlib, ret);
   ret.DBArray = require('./dbarrayhandlercreator')(execlib, ret);
   ret.Shift2Pusher = require('./shift2pushercreator')(execlib, ret);
-  var JobBase = require('./transactions/jobbasecreator')(execlib);
-  ret.JobBase = JobBase;
-  ret.KnownLengthInsertJob = require('./transactions/knownlengthinsertjobcreator')(execlib, JobBase);
+  ret.KnownLengthInsertJob = require('./transactions/knownlengthinsertjobcreator')(execlib, qlib.JobBase);
   ret.FiniteLengthInsertJob = require('./transactions/finitelengthinsertjobcreator')(execlib, ret.KnownLengthInsertJob);
-  ret.PromiseChainerJob = require('./transactions/promisechainerjobcreator')(execlib, JobBase);
-  ret.ChainedOperationsJob = require('./transactions/chainedoperationsjobcreator')(execlib, JobBase);
-  ret.JobCollection = require('./jobcollectioncreator')(execlib);
+  ret.ChainedOperationsJob = require('./transactions/chainedoperationsjobcreator')(execlib, qlib.JobBase);
 
   return ret;
 }
