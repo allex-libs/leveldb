@@ -108,6 +108,25 @@ function createDBHandler (execlib) {
     }
   };
 
+  function resultReporter(result) {
+    return q(result);
+  }
+
+  function errorReporter(deflt, error) {
+    if (error.notFound) {
+      return q(deflt);
+    } else {
+      return q.reject(error);
+    }
+  };
+
+  LevelDBHandler.prototype.getWDefault = function (key, deflt) {
+    return this.get(key).then(
+      resultReporter,
+      errorReporter.bind(null, deflt)
+    );
+  };
+
   //  Upsert section //
   function putterAfterProcessor(handler, defer, key, item) {
     if (item === null) {
@@ -134,7 +153,8 @@ function createDBHandler (execlib) {
       //console.log('processorfunc threw', e);
       return;
     }
-    if (procret && 'function' === typeof procret.then){
+    //if (procret && 'function' === typeof procret.then){
+    if (q.isPromise(procret)){
       procret.then(
         putterAfterProcessor.bind(null, handler, defer, key),
         defer.reject.bind(defer)
