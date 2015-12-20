@@ -26,6 +26,10 @@ function createDBArray(execlib, leveldblib) {
     prophash.dbcreationoptions = lib.extend(prophash.dbcreationoptions || {}, {
       keyEncoding: keyEncodingFor(prophash.indexsize)
     });
+    if (prophash.starteddefer) {
+      prophash.dbarraystarteddefer = prophash.starteddefer;
+      prophash.starteddefer = null;
+    }
     QueueableHandler.call(this, prophash);
     this.head = Infinity;
     this.tail = 0;
@@ -60,9 +64,9 @@ function createDBArray(execlib, leveldblib) {
         this.head--;
       }
     }
-    console.log('init done', this.head, this.tail, prophash.dbname, prophash.starteddefer ? 'with' : 'without', 'starteddefer');
-    if (prophash.starteddefer) {
-      prophash.starteddefer.resolve(this);
+    console.log('init done', this.head, this.tail, prophash.dbname, prophash.dbarraystarteddefer ? 'with' : 'without', 'starteddefer');
+    if (prophash.dbarraystarteddefer) {
+      prophash.dbarraystarteddefer.resolve(this);
     }
   };
   DBArrayHandler.prototype.onInitTraversal = function (item) {
