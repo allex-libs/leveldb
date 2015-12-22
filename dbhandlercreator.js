@@ -4,7 +4,8 @@ var levelup = require('level'),
 function createDBHandler (execlib) {
   'use strict';
   var lib = execlib.lib,
-    q = lib.q;
+    q = lib.q,
+    qlib = lib.qlib;
 
   function FakeDB() {
     this.q = new lib.Fifo();
@@ -242,6 +243,11 @@ function createDBHandler (execlib) {
   function streamTraverser(stream, cb, item) {
     cb(item, stream);
   }
+  function functionFilterStreamTraverser(filterfunc, stream, cb, item) {
+    if (filterfunc(item)) {
+      cb(item, stream);
+    }
+  }
   function streamEnder(defer, stream) {
     stream.removeAllListeners();
     defer.resolve(true);
@@ -249,7 +255,14 @@ function createDBHandler (execlib) {
   LevelDBHandler.prototype.traverse = function (cb, options) {
     var stream = this.getReadStream(options),
       d = (options ? options.defer : null) || q.defer();
-    stream.on('data', streamTraverser.bind(null, stream, cb));
+    switch (typeof (options ? options.filter : void 0)) {
+      case 'function':
+        stream.on('data', functionFilterStreamTraverser.bind(null, options.filter, stream, cb));
+        break;
+      default:
+        stream.on('data', streamTraverser.bind(null, stream, cb));
+        break;
+    }
     stream.on('end', streamEnder.bind(null, d, stream));
     return d.promise;
   };
@@ -270,6 +283,18 @@ function createDBHandler (execlib) {
     return this.db.createReadStream(options);
   };
   // end of reading/traversing section//
+  
+  // helpers //
+  function dumper(dumperobj, keyvalobj) {
+    dumperobj.rows++;
+    console.log(keyvalobj.key, ':', keyvalobj.value);
+  }
+  LevelDBHandler.prototype.dumpToConsole = function (options) {
+    var dumperobj = {rows: 0};
+    return this.traverse(dumper.bind(null, dumperobj), options).then(qlib.returner(dumperobj));
+  };
+  // end of helpers section //
+
 
   return LevelDBHandler;
 }
