@@ -19,10 +19,21 @@ function createServicePackMixin(execlib) {
     this.stream = stream;
   };
 
+  var resumeLevelDBStreamDescriptor = require('./resumeleveldbstreamdescriptor');
   function UserLevelDBMixin() {
     this.__streamingDefers = new lib.Map();
   }
-  var resumeLevelDBStreamDescriptor = require('./resumeleveldbstreamdescriptor');
+
+  function rejecter(defer) {
+    defer.reject(new lib.Error('USER_UNDER_DESTRUCTION'));
+  }
+  UserLevelDBMixin.prototype.__cleanUp = function () {
+    if (this.__streamingDefers) {
+      this.__streamingDefers.traverse(rejecter);
+      this.__streamingDefers.destroy();
+    }
+    this.__streamingDefers = null;
+  };
 
   function notificator(countobj, streamingdefer, options, item, stream) {
     streamingdefer.setStream(stream);
