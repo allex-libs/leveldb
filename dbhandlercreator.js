@@ -1,4 +1,4 @@
-var levelup = require('level'),
+var levelup = require('level-browserify'),
   child_process = require('child_process');
 
 function createDBHandler (execlib) {
@@ -276,7 +276,9 @@ function createDBHandler (execlib) {
     defer.notify(item);
   }
   LevelDBHandler.prototype.streamInto = function (defer, options) {
-    return this.traverse(notifier.bind(null, defer), options);
+    var ret = this.traverse(notifier.bind(null, defer), options);
+    ret.then(defer.resolve.bind(defer));
+    return ret;
   }
   LevelDBHandler.prototype.getReadStream = function (options) {
     //console.log('createReadStream', options);
