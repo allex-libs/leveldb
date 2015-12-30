@@ -5,10 +5,7 @@ function createStreamInSink(execlib) {
   function notificator(sink, defer, itemer, pager, item) {
     if (item.pagebreak) {
       var d = q.defer();
-      d.promise.then(sink.call.bind(sink, 'resumeLevelDBStream', item.pagebreak)).then(
-        console.log.bind(console, 'ok'),
-        console.error.bind(console, 'nok')
-      );
+      d.promise.then(sink.call.bind(sink, 'resumeLevelDBStream', item.pagebreak));
       pager(d);
       return;
     }

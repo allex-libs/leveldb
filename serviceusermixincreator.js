@@ -5,6 +5,7 @@ function createServicePackMixin(execlib) {
     JobBase = qlib.JobBase;
 
   function StreamingDefer(defer) {
+    console.log('isPromise', q.isPromise(defer.promise));
     JobBase.call(this, defer);
     this.id = lib.uid();
     this.stream = null;
@@ -47,7 +48,7 @@ function createServicePackMixin(execlib) {
 
   UserLevelDBMixin.prototype.streamLevelDB = function (db, options, defer) {
     var remover, streamingdefer;
-    if (options.pagesize) {
+    if (options && options.pagesize) {
       streamingdefer = new StreamingDefer(defer);
       remover = qlib.executor(this.__streamingDefers.remove.bind(this.__streamingDefers, streamingdefer.id));
       this.__streamingDefers.add(streamingdefer.id, streamingdefer);
