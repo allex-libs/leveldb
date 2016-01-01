@@ -6,11 +6,11 @@ function createInt8Codec(execlib, numchecker) {
         throw new lib('NUMBER_TOO_LARGE_FOR_8BITS', num);
       }
       var ret = new Buffer(1);
-      ret.writeUInt8BE(num);
+      ret.writeUInt8(num);
       return ret;
     },
     decode: function (buff) {
-      return buff.readUInt8BE(0);
+      return buff.readUInt8(0);
     },
     buffer: true,
     type: 'int8'
