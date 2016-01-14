@@ -12,9 +12,9 @@ function createFiniteLengthInsertJob(execlib, KnownLengthInsertJob) {
     this.currentlyreceived = 0;
     KnownLengthInsertJob.prototype.destroy.call(this);
   };
-  FiniteLengthInsertJob.prototype.insert = function (key, val) {
+  FiniteLengthInsertJob.prototype.put = function (key, val) {
     this.currentlyreceived ++;
-    KnownLengthInsertJob.prototype.insert.call(this, key, val);
+    KnownLengthInsertJob.prototype.put.call(this, key, val);
   };
   FiniteLengthInsertJob.prototype.push = function (item) {
     this.currentlyreceived ++;

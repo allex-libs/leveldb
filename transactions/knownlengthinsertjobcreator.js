@@ -40,6 +40,14 @@ function createKnownLengthInsertJob(execlib, JobBase) {
     );
     return ret;
   };
+  KnownLengthInsertJob.prototype.add = function (item) {
+    var ret = this.db.add(item);
+    ret.then(
+      this.onInsert.bind(this),
+      this.reject.bind(this)
+    );
+    return ret;
+  };
   KnownLengthInsertJob.prototype.setLength = function (length) {
     this.toinsert = length;
     this.doCheck();
