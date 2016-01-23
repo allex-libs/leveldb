@@ -238,6 +238,27 @@ function createDBHandler (execlib) {
 
   // end of specialized upserters //
 
+  //safe get //
+
+  function onSafeGetError(defaultval, defer, error) {
+    if (error.notFound) {
+      defer.resolve(defaultval);
+    } else {
+      defer.reject(error);
+    }
+  }
+
+  LevelDBHandler.prototype.safeGet = function (key, defaultval) {
+    var d = q.defer();
+    this.get(key).then(
+      d.resolve.bind(d),
+      onSafeGetError.bind(null, defaultval, d)
+    );
+    return d.promise;
+  };
+
+  // end of safe get //
+
 
   // reading/traversing section //
   function streamTraverser(stream, cb, item) {
