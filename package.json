@@ -10,6 +10,9 @@
     "type": "git",
     "url": "git@gitlab.hers.rs:allex_libs/leveldb"
   },
+  "bin": {
+    "allex-leveldb-convert": "bin/leveldbconvert.js"
+  },
   "dependencies": {
     "level-browserify": "1.1.0"
   },
