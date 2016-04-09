@@ -14,7 +14,7 @@ function createDBHandler (execlib) {
     this.q.push(['put', [key, val, options, cb]]);
   };
   FakeDB.prototype.get = function (key, options, cb) {
-    this.q.push(['get', key, options, cb]);
+    this.q.push(['get', [key, options, cb]]);
   };
   FakeDB.prototype.transferCommands = function (db) {
     while (this.q.length) {
@@ -42,9 +42,9 @@ function createDBHandler (execlib) {
     this.put = null;
     this.get = null;
     this.del = null;
+    this.setDB(new FakeDB());
     if (prophash.initiallyemptydb) {
       console.log(prophash.dbname, 'initiallyemptydb!');
-      this.setDB(new FakeDB());
       child_process.exec('rm -rf '+prophash.dbname, this.createDB.bind(this, prophash));
     } else {
       this.createDB(prophash);
