@@ -17,7 +17,7 @@ function createDBHandler (execlib) {
     this.q.push(['get', [key, options, cb]]);
   };
   FakeDB.prototype.transferCommands = function (db) {
-    while (this.q.length) {
+    while (this.q.getFifoLength()) {
       var cp = this.q.pop(),
         command = cp[0],
         args = cp[1];

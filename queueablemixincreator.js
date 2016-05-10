@@ -23,7 +23,7 @@ function createQueueableMixin (execlib) {
   QueueableMixin.prototype.destroy = function () {
     this._checker = null;
     if (this._waiters) {
-      while (this._waiters.length) {
+      while (this._waiters.getFifoLength()) {
         this._waiters.pop().reject(_destroyingError);
       }
       this._waiters.destroy();
@@ -57,7 +57,7 @@ function createQueueableMixin (execlib) {
   QueueableMixin.prototype.checkQ = function () {
     var q;
     if (this.q.length<1) {
-      if (this._waiters.length) {
+      if (this._waiters.getFifoLength()) {
         this._waiters.pop().resolve(true);
       }
       return;
