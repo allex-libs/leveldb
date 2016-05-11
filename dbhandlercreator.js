@@ -16,13 +16,21 @@ function createDBHandler (execlib) {
   FakeDB.prototype.get = function (key, options, cb) {
     this.q.push(['get', [key, options, cb]]);
   };
+  FakeDB.prototype.del = function (key, options, cb) {
+    this.q.push(['del', [key, options, cb]]);
+  };
   FakeDB.prototype.transferCommands = function (db) {
+    if (!this.q) {
+      return;
+    }
     while (this.q.getFifoLength()) {
       var cp = this.q.pop(),
         command = cp[0],
         args = cp[1];
       db[command].apply(db,args);
     }
+    this.q.destroy();
+    this.q = null;
   };
 
 
