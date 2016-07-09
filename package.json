@@ -14,7 +14,8 @@
     "allex-leveldb-convert": "bin/leveldbconvert.js"
   },
   "dependencies": {
-    "level-browserify": "1.1.0"
+    "level-browserify": "1.1.0",
+    "mkdirp": "0.5.x"
   },
   "keywords": [
     "AllexJS",

@@ -1,11 +1,37 @@
 var levelup = require('level-browserify'),
-  child_process = require('child_process');
+  child_process = require('child_process'),
+  Path = require('path'),
+  mkdirp = require('mkdirp');
 
 function createDBHandler (execlib) {
   'use strict';
   var lib = execlib.lib,
     q = lib.q,
     qlib = lib.qlib;
+
+  function onDirMade(defer, err) {
+    var pa;
+    if (err && err.code && err.code === 'ENOENT') {
+      pa = err.path.split(Path.sep);
+      console.log(pa);
+      return;
+    }
+    defer.resolve(true);
+  }
+
+  function preparePath(path) {
+    var pp = Path.parse(path),
+      d = q.defer();
+    mkdirp(pp.dir, onDirMade.bind(null, d));
+    return d.promise;
+  }
+
+  function errorraiser (defer, error) {
+    if (defer && lib.isFunction(defer.reject)) {
+      defer.reject(error);
+    }
+    defer = null;
+  }
 
   function FakeDB() {
     this.q = new lib.Fifo();
@@ -103,9 +129,18 @@ function createDBHandler (execlib) {
   };
   LevelDBHandler.prototype.onLevelDBCreated = function (prophash, err, db) {
     if (!this.dbname) {
+      if (prophash.starteddefer) {
+        prophash.starteddefer.reject(new lib.Error('NO_LEVELDB_NAME_SPECIFIED'));
+      }
       return;
     }
     if (err) {
+      if(err.message && /IO error.*LOCK/.test(err.message)) {
+        preparePath(prophash.dbname).then(
+          this.createDB.bind(this, prophash)
+        );
+        return;
+      }
       console.error(prophash.dbname, 'could not be started now', err);
       lib.runNext(this.createDB.bind(this, prophash), 1000);
       return;
