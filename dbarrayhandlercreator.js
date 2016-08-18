@@ -103,6 +103,9 @@ function createDBArray(execlib, leveldblib) {
     } else {
       this.processQ(commandcontainer);
     }
+    puttername = null;
+    itemcontainer = null;
+    defer = null;
   };
   DBArrayHandler.prototype.push = function (item, defer) {
     if (!defer && defer!==0) {
@@ -167,6 +170,8 @@ function createDBArray(execlib, leveldblib) {
     d.promise.done(
       function (finalizer) {
         defer.resolve({items:items, finalizer:finalizer});
+        items = null;
+        defer = null;
       },
       //defer.resolve.bind(defer,items),
       defer.reject.bind(defer),
@@ -182,6 +187,8 @@ function createDBArray(execlib, leveldblib) {
       console.error(e.stack);
       console.error(e);
     }
+    howmany = null;
+    defer = null;
   };
   DBArrayHandler.prototype.pop = function (defer) {
     if (this.head === Infinity) {
@@ -194,6 +201,7 @@ function createDBArray(execlib, leveldblib) {
     } else {
       this.dbPerform('del', [--this.tail], defer);
     }
+    defer = null;
   };
   DBArrayHandler.prototype.manyPopperStartFromOne = function(container, item) {
     container.push(['del', [this.tail--]], 0);
@@ -215,6 +223,8 @@ function createDBArray(execlib, leveldblib) {
       this.finishAndContinueWith.bind(this, 'manyPopper', howmany, d),
       defer.reject.bind(defer)
     );
+    howmany = null;
+    defer = null;
   };
   DBArrayHandler.prototype.finishAndContinueWith = function(processorname, howmany, defer) {
     var _q = this.q;
@@ -222,6 +232,9 @@ function createDBArray(execlib, leveldblib) {
     this.finish();
     this.q = _q;
     this.doMany(processorname, howmany, defer);
+    processorname = null;
+    howmany = null;
+    defer = null;
   };
   
   return DBArrayHandler;

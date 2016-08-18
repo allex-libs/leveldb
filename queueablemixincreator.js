@@ -45,6 +45,7 @@ function createQueueableMixin (execlib) {
     } else {
       defer.resolve(this);
     }
+    defer = null;
     return ret;
   };
   QueueableMixin.prototype.whenFree = function (cb) {
@@ -81,6 +82,7 @@ function createQueueableMixin (execlib) {
     if (d && d.resolve ) {
       d.resolve(item[1]);
     }
+    item = null;
   }
   function qrejecter(err, item) {
     if (item[2]) {

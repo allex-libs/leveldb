@@ -66,10 +66,14 @@ function createServicePackMixin(execlib) {
     var streamingdefer = this.__streamingDefers.get(streamingdeferid);
     if (!streamingdefer) {
       defer.reject(new lib.Error('NO_STREAMING_DEFER', streamingdeferid));
+      streamingdeferid = null;
+      defer = null;
       return;
     }
     defer.resolve(true);
     streamingdefer.stream.resume();
+    streamingdeferid = null;
+    defer = null;
   };
 
 

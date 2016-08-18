@@ -17,6 +17,7 @@ function createDBHandler (execlib) {
       return;
     }
     defer.resolve(true);
+    defer = null;
   }
 
   function preparePath(path) {
@@ -104,6 +105,9 @@ function createDBHandler (execlib) {
     } else {
       defer.resolve([key, val]);
     }
+    key = null;
+    val = null;
+    defer = null;
   }
 
   function createProperPutter(db) {
@@ -175,12 +179,20 @@ function createDBHandler (execlib) {
   function putterAfterProcessor(handler, defer, key, item) {
     if (item === null) {
       defer.resolve(null);
+      handler = null;
+      defer = null;
+      key = null;
+      item = null;
       return;
     }
     handler.put(key, item).then(
       defer.resolve.bind(defer),
       defer.reject.bind(defer)
     );
+    handler = null;
+    defer = null;
+    key = null;
+    item = null;
   }
   function offerrerToProcessor(handler, defer, key, processorfunc, item) {
     //console.log('offerrerToProcessor', key, '=>', item);
@@ -289,6 +301,8 @@ function createDBHandler (execlib) {
     } else {
       defer.reject(error);
     }
+    defaultval = null;
+    defer = null;
   }
 
   LevelDBHandler.prototype.safeGet = function (key, defaultval) {
@@ -315,6 +329,8 @@ function createDBHandler (execlib) {
   function streamEnder(defer, stream) {
     stream.removeAllListeners();
     defer.resolve(true);
+    defer = null;
+    stream = null;
   }
   LevelDBHandler.prototype.traverse = function (cb, options) {
     var stream = this.getReadStream(options),
@@ -342,6 +358,8 @@ function createDBHandler (execlib) {
   LevelDBHandler.prototype.streamInto = function (defer, options) {
     var ret = this.traverse(notifier.bind(null, defer), options);
     ret.then(defer.resolve.bind(defer));
+    defer = null;
+    options = null;
     return ret;
   }
   LevelDBHandler.prototype.getReadStream = function (options) {
