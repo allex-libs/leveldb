@@ -20,12 +20,16 @@ function createQueueableMixin (execlib) {
     this._checker = this.checkQ.bind(this);
     this._finisher = this.finish.bind(this);
   }
+  function trueresolver (waiter) {
+    waiter.resolve(true);
+  }
+  function rejecter(waiter) {
+    waiter.reject(_destroyingError);
+  }
   QueueableMixin.prototype.destroy = function () {
     this._checker = null;
     if (this._waiters) {
-      while (this._waiters.getFifoLength()) {
-        this._waiters.pop().reject(_destroyingError);
-      }
+      this._waiters.drain(rejecter);
       this._waiters.destroy();
     }
     this._waiters = null;
@@ -58,9 +62,7 @@ function createQueueableMixin (execlib) {
   QueueableMixin.prototype.checkQ = function () {
     var q;
     if (this.q.length<1) {
-      if (this._waiters.getFifoLength()) {
-        this._waiters.pop().resolve(true);
-      }
+      this._waiters.pop(trueresolver);
       return;
     }
     q = this.q;

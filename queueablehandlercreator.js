@@ -28,7 +28,7 @@ function createQueueableHandler(execlib, leveldblib) {
     }
     var qitem = defer ? [operation, args, defer] : [operation, args];
     if (this._busy) {
-      this.q.push(qitem);
+      this.q.add(qitem);
       return;
     }
     var m = this[operation];
