@@ -77,6 +77,7 @@ function createDBHandler (execlib) {
     this.put = null;
     this.get = null;
     this.del = null;
+    this.opEvent = prophash.listenable ? new lib.HookCollection() : null;
     this.setDB(new FakeDB());
     if (prophash.initiallyemptydb) {
       console.log(prophash.dbname, 'initiallyemptydb!');
@@ -86,13 +87,17 @@ function createDBHandler (execlib) {
     }
   }
   LevelDBHandler.prototype.destroy = function () {
-    if (!this.db) {
-      return;
+    if (this.opEvent) {
+      this.opEvent.destroy();
     }
-    if (this.db.close) {
+    this.opEvent = null;
+    this.del = null;
+    this.get = null;
+    this.put = null;
+    if (this.db && this.db.close) {
       this.db.close();
     }
-    if (this.db.destroy) {
+    if (this.db && this.db.destroy) {
       this.db.destroy();
     }
     this.db = null;
@@ -103,27 +108,51 @@ function createDBHandler (execlib) {
     if (err) {
       defer.reject(err);
     } else {
-      defer.resolve([key, val]);
+      defer.resolve([key,val]);
+      if (this.opEvent) {
+        this.opEvent.fire(key, val);
+      }
     }
     key = null;
     val = null;
     defer = null;
   }
-
-  function createProperPutter(db) {
-    return function (key, val, options) {
-      var d = q.defer();
-      db.put(key, val, options, properPutterCB.bind(null, key, val, d));
-      return d.promise;
-    };
+  function properPutter(key, val, options) {
+    var d = q.defer();
+    if (!this.db) {
+      return;
+    }
+    this.db.put(key, val, options, properPutterCB.bind(this, key, val, d));
+    return d.promise;
+  }
+  function properDelerCB(key, defer, err) {
+    if (err) {
+      defer.reject(err);
+    } else {
+      defer.resolve(key);
+      if (this.opEvent) {
+        this.opEvent.fire(key);
+      }
+    }
+    key = null;
+    defer = null;
+  }
+  function properDeler(key, options) {
+    var d = q.defer();
+    if (!this.db) {
+      return;
+    }
+    this.db.del(key, properDelerCB.bind(this, key, d));
+    return d.promise;
   }
   LevelDBHandler.prototype.setDB = function (db, prophash) {
     var _db = this.db;
     this.db = db;
     //this.put = q.nbind(this.db.put, this.db);
-    this.put = createProperPutter(this.db);
+    this.put = properPutter.bind(this);
     this.get = q.nbind(this.db.get, this.db);
-    this.del = q.nbind(this.db.del, this.db);
+    //this.del = q.nbind(this.db.del, this.db);
+    this.del = properDeler.bind(this);
     if (_db && _db.transferCommands) {
       _db.transferCommands(this.db);
     }

@@ -42,6 +42,7 @@ function createLib(execlib) {
   ret.FiniteLengthInsertJob = require('./transactions/finitelengthinsertjobcreator')(execlib, ret.KnownLengthInsertJob);
   ret.ChainedOperationsJob = require('./transactions/chainedoperationsjobcreator')(execlib, qlib.JobBase);
   ret.ServiceUserMixin = require('./serviceusermixincreator')(execlib);
+  ret.HookableUserSessionMixin = require('./hookableusersessionmixincreator')(execlib);
   ret.streamInSink = require('./streaminsinkcreator')(execlib);
   ret.enhanceSink = function(sinkklass) {
     sinkklass.prototype.ClientUser.prototype.__methodDescriptors.resumeLevelDBStream = require('./resumeleveldbstreamdescriptor');
