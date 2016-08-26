@@ -1,7 +1,8 @@
 function createHookableUserSessionMixin (execlib) {
   'use strict';
 
-  var lib = execlib.lib;
+  var lib = execlib.lib,
+    q = lib.q;
 
   function HookableUserSessionMixin (leveldb) {
     this.leveldb = leveldb;
@@ -47,13 +48,11 @@ function createHookableUserSessionMixin (execlib) {
     }
     if (checkforlistener) {
       if (doscan) {
-        d = q.defer();
         pser = this.postScan.bind(this, defer, checkforlistener);
-        d.promise.then(
+        this.leveldb.traverse(this.onScan.bind(this), {}).then(
           pser,
-          pser,
-          this.onScan.bind(this));
-        this.user.traverseAccounts({}, d);
+          pser
+        );
       } else {
         this.postScan(defer, checkforlistener);
       }
@@ -61,7 +60,8 @@ function createHookableUserSessionMixin (execlib) {
   };
 
   HookableUserSessionMixin.prototype.onScan = function (accounthash) {
-    this.onLevelDBDataChanged(accounthash.key, accounthash.value[0]);
+    console.log('onScan', accounthash);
+    this.onLevelDBDataChanged(accounthash.key, accounthash.value);
   };
 
   HookableUserSessionMixin.prototype.postScan = function (defer, checkforlistener) {
@@ -113,8 +113,8 @@ function createHookableUserSessionMixin (execlib) {
     this.dbkeys = null;
   };
 
-  HookableUserSessionMixin.prototype.onLevelDBDataChanged = function (username, balance) {
-    this.sendOOB('l',[username, balance]);
+  HookableUserSessionMixin.prototype.onLevelDBDataChanged = function (key, value) {
+    this.sendOOB('l',[key, value]);
   };
 
   HookableUserSessionMixin.__methodDescriptors = {
