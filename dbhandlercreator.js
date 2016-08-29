@@ -3,7 +3,7 @@ var levelup = require('level-browserify'),
   Path = require('path'),
   mkdirp = require('mkdirp');
 
-function createDBHandler (execlib) {
+function createDBHandler (execlib, datafilterslib) {
   'use strict';
   var lib = execlib.lib,
     q = lib.q,
@@ -355,24 +355,65 @@ function createDBHandler (execlib) {
       cb(item, stream);
     }
   }
-  function streamEnder(defer, stream) {
+  function streamEnder(defer, stream, destroyables) {
+    if (lib.isArray(destroyables) && destroyables.length>0) {
+      lib.arryDestroyAll(destroyables);
+    }
     stream.removeAllListeners();
     defer.resolve(true);
     defer = null;
     stream = null;
+    destroyables = null;
+  }
+  function datafilterer (filter, keyfilter) {
+    var ret = function (item) {
+      if (filter && !filter.isOK(item.value)) {
+        return false;
+      }
+      if (keyfilter && !keyfilter.isOK(item.key)) {
+        return false;
+      }
+      return true;
+    }
+    ret.destroy = function () {
+      filter = null;
+      keyfilter = null;
+      ret = null;
+    };
+    return ret;
   }
   LevelDBHandler.prototype.traverse = function (cb, options) {
     var stream = this.getReadStream(options),
-      d = (options ? options.defer : null) || q.defer();
+      d = (options ? options.defer : null) || q.defer(),
+      destroyables = [];
     switch (typeof (options ? options.filter : void 0)) {
       case 'function':
         stream.on('data', functionFilterStreamTraverser.bind(null, options.filter, stream, cb));
+        break;
+      case 'object':
+        try {
+          destroyables.push(
+            datafilterer(
+              datafilterslib.createFromDescriptor(options.filter),
+              datafilterslib.createFromDescriptor(options.keyfilter)
+            )
+          );
+          stream.on('data', functionFilterStreamTraverser.bind(
+            null, 
+            destroyables[0],
+            stream,
+            cb));
+        } catch (e) {
+          console.error(e.stack);
+          console.error(e);
+          stream.on('data', streamTraverser.bind(null, stream, cb));
+        }
         break;
       default:
         stream.on('data', streamTraverser.bind(null, stream, cb));
         break;
     }
-    stream.on('end', streamEnder.bind(null, d, stream));
+    stream.on('end', streamEnder.bind(null, d, stream, destroyables));
     return d.promise;
   };
   function pusher(container, item) {

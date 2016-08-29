@@ -1,11 +1,15 @@
 var levelup = require('level-browserify');
 
 function createLib(execlib) {
+  return execlib.loadDependencies('client', ['allex:datafilters:lib'], realCreator.bind(null, execlib));
+}
+
+function realCreator(execlib, datafilterslib) {
   'use strict';
   var lib = execlib.lib,
     q = lib.q,
     qlib = lib.qlib,
-    LevelDBHandler = require('./dbhandlercreator')(execlib);
+    LevelDBHandler = require('./dbhandlercreator')(execlib, datafilterslib);
 
   function creator(hash) {
     return new LevelDBHandler(hash);
@@ -41,14 +45,14 @@ function createLib(execlib) {
   ret.KnownLengthInsertJob = require('./transactions/knownlengthinsertjobcreator')(execlib, qlib.JobBase);
   ret.FiniteLengthInsertJob = require('./transactions/finitelengthinsertjobcreator')(execlib, ret.KnownLengthInsertJob);
   ret.ChainedOperationsJob = require('./transactions/chainedoperationsjobcreator')(execlib, qlib.JobBase);
-  ret.ServiceUserMixin = require('./serviceusermixincreator')(execlib);
+  ret.ServiceUserMixin = require('./serviceusermixincreator')(execlib, datafilterslib);
   ret.HookableUserSessionMixin = require('./hookableusersessionmixincreator')(execlib);
   ret.streamInSink = require('./streaminsinkcreator')(execlib);
   ret.enhanceSink = function(sinkklass) {
     sinkklass.prototype.ClientUser.prototype.__methodDescriptors.resumeLevelDBStream = require('./resumeleveldbstreamdescriptor');
   }
 
-  return ret;
+  return execlib.lib.q(ret);
 }
 
 module.exports = createLib;

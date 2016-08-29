@@ -1,4 +1,4 @@
-function createServicePackMixin(execlib) {
+function createServicePackMixin(execlib, datafilterslib) {
   var lib = execlib.lib,
     q = lib.q,
     qlib = lib.qlib,
@@ -61,7 +61,7 @@ function createServicePackMixin(execlib) {
         remover = null;
       };
       this.__streamingDefers.add(streamingdefer.id, streamingdefer);
-      db.traverse(notifier.bind(null, streamingobj, streamingdefer, options)).then(
+      db.traverse(notifier.bind(null, streamingobj, streamingdefer, options),options).then(
         remover,
         remover
       );
