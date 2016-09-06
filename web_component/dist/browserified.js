@@ -58,7 +58,7 @@ exports.kMaxLength = kMaxLength()
 function typedArraySupport () {
   try {
     var arr = new Uint8Array(1)
-    arr.foo = function () { return 42 }
+    arr.__proto__ = {__proto__: Uint8Array.prototype, foo: function () { return 42 }}
     return arr.foo() === 42 && // typed array instances can be augmented
         typeof arr.subarray === 'function' && // chrome 9-10 lack `subarray`
         arr.subarray(1, 1).byteLength === 0 // ie10 has broken `subarray`
@@ -202,7 +202,7 @@ function allocUnsafe (that, size) {
   assertSize(size)
   that = createBuffer(that, size < 0 ? 0 : checked(size) | 0)
   if (!Buffer.TYPED_ARRAY_SUPPORT) {
-    for (var i = 0; i < size; i++) {
+    for (var i = 0; i < size; ++i) {
       that[i] = 0
     }
   }
@@ -258,7 +258,9 @@ function fromArrayBuffer (that, array, byteOffset, length) {
     throw new RangeError('\'length\' is out of bounds')
   }
 
-  if (length === undefined) {
+  if (byteOffset === undefined && length === undefined) {
+    array = new Uint8Array(array)
+  } else if (length === undefined) {
     array = new Uint8Array(array, byteOffset)
   } else {
     array = new Uint8Array(array, byteOffset, length)
@@ -380,14 +382,14 @@ Buffer.concat = function concat (list, length) {
   var i
   if (length === undefined) {
     length = 0
-    for (i = 0; i < list.length; i++) {
+    for (i = 0; i < list.length; ++i) {
       length += list[i].length
     }
   }
 
   var buffer = Buffer.allocUnsafe(length)
   var pos = 0
-  for (i = 0; i < list.length; i++) {
+  for (i = 0; i < list.length; ++i) {
     var buf = list[i]
     if (!Buffer.isBuffer(buf)) {
       throw new TypeError('"list" argument must be an Array of Buffers')
@@ -419,7 +421,6 @@ function byteLength (string, encoding) {
     switch (encoding) {
       case 'ascii':
       case 'binary':
-      // Deprecated
       case 'raw':
       case 'raws':
         return len
@@ -657,15 +658,16 @@ function arrayIndexOf (arr, val, byteOffset, encoding) {
   }
 
   var foundIndex = -1
-  for (var i = 0; byteOffset + i < arrLength; i++) {
-    if (read(arr, byteOffset + i) === read(val, foundIndex === -1 ? 0 : i - foundIndex)) {
+  for (var i = byteOffset; i < arrLength; ++i) {
+    if (read(arr, i) === read(val, foundIndex === -1 ? 0 : i - foundIndex)) {
       if (foundIndex === -1) foundIndex = i
-      if (i - foundIndex + 1 === valLength) return (byteOffset + foundIndex) * indexSize
+      if (i - foundIndex + 1 === valLength) return foundIndex * indexSize
     } else {
       if (foundIndex !== -1) i -= i - foundIndex
       foundIndex = -1
     }
   }
+
   return -1
 }
 
@@ -730,7 +732,7 @@ function hexWrite (buf, string, offset, length) {
   if (length > strLen / 2) {
     length = strLen / 2
   }
-  for (var i = 0; i < length; i++) {
+  for (var i = 0; i < length; ++i) {
     var parsed = parseInt(string.substr(i * 2, 2), 16)
     if (isNaN(parsed)) return i
     buf[offset + i] = parsed
@@ -944,7 +946,7 @@ function asciiSlice (buf, start, end) {
   var ret = ''
   end = Math.min(buf.length, end)
 
-  for (var i = start; i < end; i++) {
+  for (var i = start; i < end; ++i) {
     ret += String.fromCharCode(buf[i] & 0x7F)
   }
   return ret
@@ -954,7 +956,7 @@ function binarySlice (buf, start, end) {
   var ret = ''
   end = Math.min(buf.length, end)
 
-  for (var i = start; i < end; i++) {
+  for (var i = start; i < end; ++i) {
     ret += String.fromCharCode(buf[i])
   }
   return ret
@@ -967,7 +969,7 @@ function hexSlice (buf, start, end) {
   if (!end || end < 0 || end > len) end = len
 
   var out = ''
-  for (var i = start; i < end; i++) {
+  for (var i = start; i < end; ++i) {
     out += toHex(buf[i])
   }
   return out
@@ -1010,7 +1012,7 @@ Buffer.prototype.slice = function slice (start, end) {
   } else {
     var sliceLen = end - start
     newBuf = new Buffer(sliceLen, undefined)
-    for (var i = 0; i < sliceLen; i++) {
+    for (var i = 0; i < sliceLen; ++i) {
       newBuf[i] = this[i + start]
     }
   }
@@ -1237,7 +1239,7 @@ Buffer.prototype.writeUInt8 = function writeUInt8 (value, offset, noAssert) {
 
 function objectWriteUInt16 (buf, value, offset, littleEndian) {
   if (value < 0) value = 0xffff + value + 1
-  for (var i = 0, j = Math.min(buf.length - offset, 2); i < j; i++) {
+  for (var i = 0, j = Math.min(buf.length - offset, 2); i < j; ++i) {
     buf[offset + i] = (value & (0xff << (8 * (littleEndian ? i : 1 - i)))) >>>
       (littleEndian ? i : 1 - i) * 8
   }
@@ -1271,7 +1273,7 @@ Buffer.prototype.writeUInt16BE = function writeUInt16BE (value, offset, noAssert
 
 function objectWriteUInt32 (buf, value, offset, littleEndian) {
   if (value < 0) value = 0xffffffff + value + 1
-  for (var i = 0, j = Math.min(buf.length - offset, 4); i < j; i++) {
+  for (var i = 0, j = Math.min(buf.length - offset, 4); i < j; ++i) {
     buf[offset + i] = (value >>> (littleEndian ? i : 3 - i) * 8) & 0xff
   }
 }
@@ -1486,12 +1488,12 @@ Buffer.prototype.copy = function copy (target, targetStart, start, end) {
 
   if (this === target && start < targetStart && targetStart < end) {
     // descending copy from end
-    for (i = len - 1; i >= 0; i--) {
+    for (i = len - 1; i >= 0; --i) {
       target[i + targetStart] = this[i + start]
     }
   } else if (len < 1000 || !Buffer.TYPED_ARRAY_SUPPORT) {
     // ascending copy from start
-    for (i = 0; i < len; i++) {
+    for (i = 0; i < len; ++i) {
       target[i + targetStart] = this[i + start]
     }
   } else {
@@ -1552,7 +1554,7 @@ Buffer.prototype.fill = function fill (val, start, end, encoding) {
 
   var i
   if (typeof val === 'number') {
-    for (i = start; i < end; i++) {
+    for (i = start; i < end; ++i) {
       this[i] = val
     }
   } else {
@@ -1560,7 +1562,7 @@ Buffer.prototype.fill = function fill (val, start, end, encoding) {
       ? val
       : utf8ToBytes(new Buffer(val, encoding).toString())
     var len = bytes.length
-    for (i = 0; i < end - start; i++) {
+    for (i = 0; i < end - start; ++i) {
       this[i + start] = bytes[i % len]
     }
   }
@@ -1602,7 +1604,7 @@ function utf8ToBytes (string, units) {
   var leadSurrogate = null
   var bytes = []
 
-  for (var i = 0; i < length; i++) {
+  for (var i = 0; i < length; ++i) {
     codePoint = string.charCodeAt(i)
 
     // is surrogate component
@@ -1677,7 +1679,7 @@ function utf8ToBytes (string, units) {
 
 function asciiToBytes (str) {
   var byteArray = []
-  for (var i = 0; i < str.length; i++) {
+  for (var i = 0; i < str.length; ++i) {
     // Node's code seems to be doing this and not & 0x7F..
     byteArray.push(str.charCodeAt(i) & 0xFF)
   }
@@ -1687,7 +1689,7 @@ function asciiToBytes (str) {
 function utf16leToBytes (str, units) {
   var c, hi, lo
   var byteArray = []
-  for (var i = 0; i < str.length; i++) {
+  for (var i = 0; i < str.length; ++i) {
     if ((units -= 2) < 0) break
 
     c = str.charCodeAt(i)
@@ -1705,7 +1707,7 @@ function base64ToBytes (str) {
 }
 
 function blitBuffer (src, dst, offset, length) {
-  for (var i = 0; i < length; i++) {
+  for (var i = 0; i < length; ++i) {
     if ((i + offset >= dst.length) || (i >= src.length)) break
     dst[i + offset] = src[i]
   }
@@ -1981,8 +1983,12 @@ EventEmitter.prototype.emit = function(type) {
       er = arguments[1];
       if (er instanceof Error) {
         throw er; // Unhandled 'error' event
+      } else {
+        // At least give some kind of context to the user
+        var err = new Error('Uncaught, unspecified "error" event. (' + er + ')');
+        err.context = er;
+        throw err;
       }
-      throw TypeError('Uncaught, unspecified "error" event.');
     }
   }
 
@@ -5648,9 +5654,9 @@ function hasOwnProperty(obj, prop) {
 
 }).call(this,require('_process'),typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
 },{"./support/isBuffer":29,"_process":11,"inherits":8}],31:[function(require,module,exports){
-ALLEX.execSuite.libRegistry.register('allex_leveldblib',require('./index')(ALLEX));
+ALLEX.execSuite.libRegistry.register('allex_leveldblib',require('./libloader')(ALLEX, ALLEX.execSuite.libRegistry.register('allex_datafilterslib')));
 
-},{"./index":39}],32:[function(require,module,exports){
+},{"./libloader":40}],32:[function(require,module,exports){
 (function (Buffer){
 function createInt16Codec(execlib, numchecker) {
   return {
@@ -6024,7 +6030,7 @@ var levelup = require('level-browserify'),
   Path = require('path'),
   mkdirp = require('mkdirp');
 
-function createDBHandler (execlib) {
+function createDBHandler (execlib, datafilterslib) {
   'use strict';
   var lib = execlib.lib,
     q = lib.q,
@@ -6098,6 +6104,7 @@ function createDBHandler (execlib) {
     this.put = null;
     this.get = null;
     this.del = null;
+    this.opEvent = prophash.listenable ? new lib.HookCollection() : null;
     this.setDB(new FakeDB());
     if (prophash.initiallyemptydb) {
       console.log(prophash.dbname, 'initiallyemptydb!');
@@ -6107,13 +6114,17 @@ function createDBHandler (execlib) {
     }
   }
   LevelDBHandler.prototype.destroy = function () {
-    if (!this.db) {
-      return;
+    if (this.opEvent) {
+      this.opEvent.destroy();
     }
-    if (this.db.close) {
+    this.opEvent = null;
+    this.del = null;
+    this.get = null;
+    this.put = null;
+    if (this.db && this.db.close) {
       this.db.close();
     }
-    if (this.db.destroy) {
+    if (this.db && this.db.destroy) {
       this.db.destroy();
     }
     this.db = null;
@@ -6124,27 +6135,51 @@ function createDBHandler (execlib) {
     if (err) {
       defer.reject(err);
     } else {
-      defer.resolve([key, val]);
+      defer.resolve([key,val]);
+      if (this.opEvent) {
+        this.opEvent.fire(key, val);
+      }
     }
     key = null;
     val = null;
     defer = null;
   }
-
-  function createProperPutter(db) {
-    return function (key, val, options) {
-      var d = q.defer();
-      db.put(key, val, options, properPutterCB.bind(null, key, val, d));
-      return d.promise;
-    };
+  function properPutter(key, val, options) {
+    var d = q.defer();
+    if (!this.db) {
+      return;
+    }
+    this.db.put(key, val, options, properPutterCB.bind(this, key, val, d));
+    return d.promise;
+  }
+  function properDelerCB(key, defer, err) {
+    if (err) {
+      defer.reject(err);
+    } else {
+      defer.resolve(key);
+      if (this.opEvent) {
+        this.opEvent.fire(key);
+      }
+    }
+    key = null;
+    defer = null;
+  }
+  function properDeler(key, options) {
+    var d = q.defer();
+    if (!this.db) {
+      return;
+    }
+    this.db.del(key, properDelerCB.bind(this, key, d));
+    return d.promise;
   }
   LevelDBHandler.prototype.setDB = function (db, prophash) {
     var _db = this.db;
     this.db = db;
     //this.put = q.nbind(this.db.put, this.db);
-    this.put = createProperPutter(this.db);
+    this.put = properPutter.bind(this);
     this.get = q.nbind(this.db.get, this.db);
-    this.del = q.nbind(this.db.del, this.db);
+    //this.del = q.nbind(this.db.del, this.db);
+    this.del = properDeler.bind(this);
     if (_db && _db.transferCommands) {
       _db.transferCommands(this.db);
     }
@@ -6347,24 +6382,65 @@ function createDBHandler (execlib) {
       cb(item, stream);
     }
   }
-  function streamEnder(defer, stream) {
+  function streamEnder(defer, stream, destroyables) {
+    if (lib.isArray(destroyables) && destroyables.length>0) {
+      lib.arryDestroyAll(destroyables);
+    }
     stream.removeAllListeners();
     defer.resolve(true);
     defer = null;
     stream = null;
+    destroyables = null;
+  }
+  function datafilterer (filter, keyfilter) {
+    var ret = function (item) {
+      if (filter && !filter.isOK(item.value)) {
+        return false;
+      }
+      if (keyfilter && !keyfilter.isOK(item.key)) {
+        return false;
+      }
+      return true;
+    }
+    ret.destroy = function () {
+      filter = null;
+      keyfilter = null;
+      ret = null;
+    };
+    return ret;
   }
   LevelDBHandler.prototype.traverse = function (cb, options) {
     var stream = this.getReadStream(options),
-      d = (options ? options.defer : null) || q.defer();
+      d = (options ? options.defer : null) || q.defer(),
+      destroyables = [];
     switch (typeof (options ? options.filter : void 0)) {
       case 'function':
         stream.on('data', functionFilterStreamTraverser.bind(null, options.filter, stream, cb));
+        break;
+      case 'object':
+        try {
+          destroyables.push(
+            datafilterer(
+              datafilterslib.createFromDescriptor(options.filter),
+              datafilterslib.createFromDescriptor(options.keyfilter)
+            )
+          );
+          stream.on('data', functionFilterStreamTraverser.bind(
+            null, 
+            destroyables[0],
+            stream,
+            cb));
+        } catch (e) {
+          console.error(e.stack);
+          console.error(e);
+          stream.on('data', streamTraverser.bind(null, stream, cb));
+        }
         break;
       default:
         stream.on('data', streamTraverser.bind(null, stream, cb));
         break;
     }
-    stream.on('end', streamEnder.bind(null, d, stream));
+    stream.on('end', streamEnder.bind(null, d, stream, destroyables));
     return d.promise;
   };
   function pusher(container, item) {
@@ -6406,16 +6482,169 @@ function createDBHandler (execlib) {
 
 module.exports = createDBHandler;
 
-},{"child_process":1,"level-browserify":40,"mkdirp":88,"path":10}],39:[function(require,module,exports){
-(function (Buffer){
-var levelup = require('level-browserify');
+},{"child_process":1,"level-browserify":61,"mkdirp":76,"path":10}],39:[function(require,module,exports){
+function createHookableUserSessionMixin (execlib) {
+  'use strict';
 
-function createLib(execlib) {
+  var lib = execlib.lib,
+    q = lib.q;
+
+  function HookableUserSessionMixin (leveldb) {
+    this.leveldb = leveldb;
+    this.dbkeys = null;
+    this.dbOpListener = null;
+  }
+
+  HookableUserSessionMixin.addMethods = function (UserSession) {
+    lib.inheritMethods (UserSession, HookableUserSessionMixin,
+      'hook',
+      'onScan',
+      'postScan',
+      '_unhook',
+      'unhook',
+      'stopListening',
+      'onLevelDBDataChanged'
+    );
+  };
+
+  HookableUserSessionMixin.ALL_KEYS = '***';
+
+  HookableUserSessionMixin.prototype.destroy = function () {
+    this.dbkeys = null;
+    if (this.dbOpListener) {
+      this.dbOpListener.destroy();
+    }
+    this.dbOpListener = null;
+    this.leveldb = null;
+  };
+
+  HookableUserSessionMixin.prototype.hook = function (hookobj, defer) {
+    var doscan = hookobj.scan, dbkeys = hookobj.accounts, checkforlistener = false, d, pser;
+    if (!lib.isArray(dbkeys)) {
+      defer.resolve(true);
+    }
+    if (dbkeys.indexOf(HookableUserSessionMixin.ALL_KEYS) >= 0) {
+      this.dbkeys = true;
+      checkforlistener = true;
+    } else {
+      this.dbkeys = this.dbkeys || [];
+      lib.arryOperations.appendNonExistingItems(this.dbkeys, dbkeys);
+      checkforlistener = this.dbkeys.length;
+    }
+    if (checkforlistener) {
+      if (doscan) {
+        pser = this.postScan.bind(this, defer, checkforlistener);
+        this.leveldb.traverse(this.onScan.bind(this), {}).then(
+          pser,
+          pser
+        );
+      } else {
+        this.postScan(defer, checkforlistener);
+      }
+    }
+  };
+
+  HookableUserSessionMixin.prototype.onScan = function (accounthash) {
+    console.log('onScan', accounthash);
+    this.onLevelDBDataChanged(accounthash.key, accounthash.value);
+  };
+
+  HookableUserSessionMixin.prototype.postScan = function (defer, checkforlistener) {
+    if (checkforlistener) {
+      if ( !this.dbOpListener && this.leveldb && this.leveldb.opEvent ) {
+        this.dbOpListener = this.leveldb.opEvent.attach(this.onLevelDBDataChanged.bind(this));
+      }
+    } else {
+      this.stopListening();
+    }
+    defer.resolve(true);
+  };
+
+  HookableUserSessionMixin.prototype._unhook = function (accountname){
+    var ind;
+    if (!this.dbkeys) {
+      return;
+    }
+    if (this.dbkeys === true) {
+      if (accountname === HookableUserSessionMixin.ALL_KEYS) {
+        this.stopListening();
+      }
+      return;
+    }
+    ind = this.dbkeys.indexOf(accountname);
+    if (ind >= 0) {
+      this.dbkeys.splice(ind, 1);
+    }
+  };
+
+  HookableUserSessionMixin.prototype.unhook = function (dbkeys, defer) {
+    if (!lib.isArray(dbkeys)) {
+      this.stopListening();
+      defer.resolve(true);
+      return;
+    }
+    dbkeys.forEach (this._unhook.bind(this));
+    if (!this.dbkeys) {
+      this.stopListening();
+    }
+    defer.resolve('ok');
+  };
+
+  HookableUserSessionMixin.prototype.stopListening = function () {
+    if (this.dbOpListener) {
+      this.dbOpListener.destroy();
+    }
+    this.dbOpListener = null;
+    this.dbkeys = null;
+  };
+
+  HookableUserSessionMixin.prototype.onLevelDBDataChanged = function (key, value) {
+    this.sendOOB('l',[key, value]);
+  };
+
+  HookableUserSessionMixin.__methodDescriptors = {
+    unhook: [{
+      title: 'Unhook',
+      type: 'array',
+      items: {
+        'type': 'string'
+      },
+      required: false
+    }],
+    hook : [{
+      title: 'Hook',
+      type: 'object',
+      properties : {
+        scan : {
+          type : 'boolean',
+        },
+        accounts : {
+          type : 'array',
+          items : {
+            type : 'string'
+          }
+        }
+      },
+      required: ['accounts'],
+      additionalProperties : false
+    }]
+  };
+
+  return HookableUserSessionMixin;
+
+};
+
+module.exports = createHookableUserSessionMixin;
+
+
+},{}],40:[function(require,module,exports){
+(function (Buffer){
+function realCreator(execlib, datafilterslib) {
   'use strict';
   var lib = execlib.lib,
     q = lib.q,
     qlib = lib.qlib,
-    LevelDBHandler = require('./dbhandlercreator')(execlib);
+    LevelDBHandler = require('./dbhandlercreator')(execlib, datafilterslib);
 
   function creator(hash) {
     return new LevelDBHandler(hash);
@@ -6451,279 +6680,19 @@ function createLib(execlib) {
   ret.KnownLengthInsertJob = require('./transactions/knownlengthinsertjobcreator')(execlib, qlib.JobBase);
   ret.FiniteLengthInsertJob = require('./transactions/finitelengthinsertjobcreator')(execlib, ret.KnownLengthInsertJob);
   ret.ChainedOperationsJob = require('./transactions/chainedoperationsjobcreator')(execlib, qlib.JobBase);
-  ret.ServiceUserMixin = require('./serviceusermixincreator')(execlib);
+  ret.ServiceUserMixin = require('./serviceusermixincreator')(execlib, datafilterslib);
+  ret.HookableUserSessionMixin = require('./hookableusersessionmixincreator')(execlib);
   ret.streamInSink = require('./streaminsinkcreator')(execlib);
   ret.enhanceSink = function(sinkklass) {
     sinkklass.prototype.ClientUser.prototype.__methodDescriptors.resumeLevelDBStream = require('./resumeleveldbstreamdescriptor');
   }
-
   return ret;
 }
 
-module.exports = createLib;
+module.exports = realCreator;
 
 }).call(this,require("buffer").Buffer)
-},{"./codecs/int16codeccreator":32,"./codecs/int32codeccreator":33,"./codecs/int64codeccreator":34,"./codecs/int8codeccreator":35,"./codecs/verbatimdecodercreator":36,"./dbarrayhandlercreator":37,"./dbhandlercreator":38,"./numcheckercreator":89,"./queueablehandlercreator":90,"./queueablemixincreator":91,"./resumeleveldbstreamdescriptor":92,"./serviceusermixincreator":93,"./shift2pushercreator":94,"./streaminsinkcreator":95,"./transactions/chainedoperationsjobcreator":96,"./transactions/finitelengthinsertjobcreator":97,"./transactions/knownlengthinsertjobcreator":98,"buffer":3,"level-browserify":40}],40:[function(require,module,exports){
-
-var Leveljs = require('level-js')
-
-module.exports = require('level-packager')(function(l) {
-  return new Leveljs(l)
-})
-
-},{"level-js":41,"level-packager":57}],41:[function(require,module,exports){
-(function (Buffer){
-module.exports = Level
-
-var IDB = require('idb-wrapper')
-var AbstractLevelDOWN = require('abstract-leveldown').AbstractLevelDOWN
-var util = require('util')
-var Iterator = require('./iterator')
-var isBuffer = require('isbuffer')
-var xtend = require('xtend')
-var toBuffer = require('typedarray-to-buffer')
-
-function Level(location) {
-  if (!(this instanceof Level)) return new Level(location)
-  if (!location) throw new Error("constructor requires at least a location argument")
-  this.IDBOptions = {}
-  this.location = location
-}
-
-util.inherits(Level, AbstractLevelDOWN)
-
-Level.prototype._open = function(options, callback) {
-  var self = this
-    
-  var idbOpts = {
-    storeName: this.location,
-    autoIncrement: false,
-    keyPath: null,
-    onStoreReady: function () {
-      callback && callback(null, self.idb)
-    }, 
-    onError: function(err) {
-      callback && callback(err)
-    }
-  }
-  
-  xtend(idbOpts, options)
-  this.IDBOptions = idbOpts
-  this.idb = new IDB(idbOpts)
-}
-
-Level.prototype._get = function (key, options, callback) {
-  this.idb.get(key, function (value) {
-    if (value === undefined) {
-      // 'NotFound' error, consistent with LevelDOWN API
-      return callback(new Error('NotFound'))
-    }
-    // by default return buffers, unless explicitly told not to
-    var asBuffer = true
-    if (options.asBuffer === false) asBuffer = false
-    if (options.raw) asBuffer = false
-    if (asBuffer) {
-      if (value instanceof Uint8Array) value = toBuffer(value)
-      else value = new Buffer(String(value))
-    }
-    return callback(null, value, key)
-  }, callback)
-}
-
-Level.prototype._del = function(id, options, callback) {
-  this.idb.remove(id, callback, callback)
-}
-
-Level.prototype._put = function (key, value, options, callback) {
-  if (value instanceof ArrayBuffer) {
-    value = toBuffer(new Uint8Array(value))
-  }
-  var obj = this.convertEncoding(key, value, options)
-  if (Buffer.isBuffer(obj.value)) {
-    if (typeof value.toArrayBuffer === 'function') {
-      obj.value = new Uint8Array(value.toArrayBuffer())
-    } else {
-      obj.value = new Uint8Array(value)
-    }
-  }
-  this.idb.put(obj.key, obj.value, function() { callback() }, callback)
-}
-
-Level.prototype.convertEncoding = function(key, value, options) {
-  if (options.raw) return {key: key, value: value}
-  if (value) {
-    var stringed = value.toString()
-    if (stringed === 'NaN') value = 'NaN'
-  }
-  var valEnc = options.valueEncoding
-  var obj = {key: key, value: value}
-  if (value && (!valEnc || valEnc !== 'binary')) {
-    if (typeof obj.value !== 'object') {
-      obj.value = stringed
-    }
-  }
-  return obj
-}
-
-Level.prototype.iterator = function (options) {
-  if (typeof options !== 'object') options = {}
-  return new Iterator(this.idb, options)
-}
-
-Level.prototype._batch = function (array, options, callback) {
-  var op
-  var i
-  var k
-  var copiedOp
-  var currentOp
-  var modified = []
-  
-  if (array.length === 0) return setTimeout(callback, 0)
-  
-  for (i = 0; i < array.length; i++) {
-    copiedOp = {}
-    currentOp = array[i]
-    modified[i] = copiedOp
-    
-    var converted = this.convertEncoding(currentOp.key, currentOp.value, options)
-    currentOp.key = converted.key
-    currentOp.value = converted.value
-
-    for (k in currentOp) {
-      if (k === 'type' && currentOp[k] == 'del') {
-        copiedOp[k] = 'remove'
-      } else {
-        copiedOp[k] = currentOp[k]
-      }
-    }
-  }
-
-  return this.idb.batch(modified, function(){ callback() }, callback)
-}
-
-Level.prototype._close = function (callback) {
-  this.idb.db.close()
-  callback()
-}
-
-Level.prototype._approximateSize = function (start, end, callback) {
-  var err = new Error('Not implemented')
-  if (callback)
-    return callback(err)
-
-  throw err
-}
-
-Level.prototype._isBuffer = function (obj) {
-  return Buffer.isBuffer(obj)
-}
-
-Level.destroy = function (db, callback) {
-  if (typeof db === 'object') {
-    var prefix = db.IDBOptions.storePrefix || 'IDBWrapper-'
-    var dbname = db.location
-  } else {
-    var prefix = 'IDBWrapper-'
-    var dbname = db
-  }
-  var request = indexedDB.deleteDatabase(prefix + dbname)
-  request.onsuccess = function() {
-    callback()
-  }
-  request.onerror = function(err) {
-    callback(err)
-  }
-}
-
-var checkKeyValue = Level.prototype._checkKeyValue = function (obj, type) {
-  if (obj === null || obj === undefined)
-    return new Error(type + ' cannot be `null` or `undefined`')
-  if (obj === null || obj === undefined)
-    return new Error(type + ' cannot be `null` or `undefined`')
-  if (isBuffer(obj) && obj.byteLength === 0)
-    return new Error(type + ' cannot be an empty ArrayBuffer')
-  if (String(obj) === '')
-    return new Error(type + ' cannot be an empty String')
-  if (obj.length === 0)
-    return new Error(type + ' cannot be an empty Array')
-}
-
-}).call(this,require("buffer").Buffer)
-},{"./iterator":42,"abstract-leveldown":45,"buffer":3,"idb-wrapper":47,"isbuffer":48,"typedarray-to-buffer":50,"util":30,"xtend":52}],42:[function(require,module,exports){
-var util = require('util')
-var AbstractIterator  = require('abstract-leveldown').AbstractIterator
-var ltgt = require('ltgt')
-
-module.exports = Iterator
-
-function Iterator (db, options) {
-  if (!options) options = {}
-  this.options = options
-  AbstractIterator.call(this, db)
-  this._order = options.reverse ? 'DESC': 'ASC'
-  this._limit = options.limit
-  this._count = 0
-  this._done  = false
-  var lower = ltgt.lowerBound(options)
-  var upper = ltgt.upperBound(options)
-  try {
-    this._keyRange = lower || upper ? this.db.makeKeyRange({
-      lower: lower,
-      upper: upper,
-      excludeLower: ltgt.lowerBoundExclusive(options),
-      excludeUpper: ltgt.upperBoundExclusive(options)
-    }) : null
-  } catch (e) {
-    // The lower key is greater than the upper key.
-    // IndexedDB throws an error, but we'll just return 0 results.
-    this._keyRangeError = true
-  }
-  this.callback = null
-}
-
-util.inherits(Iterator, AbstractIterator)
-
-Iterator.prototype.createIterator = function() {
-  var self = this
-
-  self.iterator = self.db.iterate(function () {
-    self.onItem.apply(self, arguments)
-  }, {
-    keyRange: self._keyRange,
-    autoContinue: false,
-    order: self._order,
-    onError: function(err) { console.log('horrible error', err) },
-  })
-}
-
-// TODO the limit implementation here just ignores all reads after limit has been reached
-// it should cancel the iterator instead but I don't know how
-Iterator.prototype.onItem = function (value, cursor, cursorTransaction) {
-  if (!cursor && this.callback) {
-    this.callback()
-    this.callback = false
-    return
-  }
-  var shouldCall = true
-
-  if (!!this._limit && this._limit > 0 && this._count++ >= this._limit)
-    shouldCall = false
-
-  if (shouldCall) this.callback(false, cursor.key, cursor.value)
-  if (cursor) cursor['continue']()
-}
-
-Iterator.prototype._next = function (callback) {
-  if (!callback) return new Error('next() requires a callback argument')
-  if (this._keyRangeError) return callback()
-  if (!this._started) {
-    this.createIterator()
-    this._started = true
-  }
-  this.callback = callback
-}
-
-},{"abstract-leveldown":45,"ltgt":49,"util":30}],43:[function(require,module,exports){
+},{"./codecs/int16codeccreator":32,"./codecs/int32codeccreator":33,"./codecs/int64codeccreator":34,"./codecs/int8codeccreator":35,"./codecs/verbatimdecodercreator":36,"./dbarrayhandlercreator":37,"./dbhandlercreator":38,"./hookableusersessionmixincreator":39,"./numcheckercreator":92,"./queueablehandlercreator":93,"./queueablemixincreator":94,"./resumeleveldbstreamdescriptor":95,"./serviceusermixincreator":96,"./shift2pushercreator":97,"./streaminsinkcreator":98,"./transactions/chainedoperationsjobcreator":99,"./transactions/finitelengthinsertjobcreator":100,"./transactions/knownlengthinsertjobcreator":101,"buffer":3}],41:[function(require,module,exports){
 (function (process){
 /* Copyright (c) 2013 Rod Vagg, MIT License */
 
@@ -6807,7 +6776,7 @@ AbstractChainedBatch.prototype.write = function (options, callback) {
 
 module.exports = AbstractChainedBatch
 }).call(this,require('_process'))
-},{"_process":11}],44:[function(require,module,exports){
+},{"_process":11}],42:[function(require,module,exports){
 (function (process){
 /* Copyright (c) 2013 Rod Vagg, MIT License */
 
@@ -6860,7 +6829,7 @@ AbstractIterator.prototype.end = function (callback) {
 module.exports = AbstractIterator
 
 }).call(this,require('_process'))
-},{"_process":11}],45:[function(require,module,exports){
+},{"_process":11}],43:[function(require,module,exports){
 (function (Buffer,process){
 /* Copyright (c) 2013 Rod Vagg, MIT License */
 
@@ -7119,8 +7088,8 @@ module.exports.AbstractLevelDOWN    = AbstractLevelDOWN
 module.exports.AbstractIterator     = AbstractIterator
 module.exports.AbstractChainedBatch = AbstractChainedBatch
 
-}).call(this,{"isBuffer":require("../../../../../../../allex-toolbox-dev/node_modules/browserify/node_modules/insert-module-globals/node_modules/is-buffer/index.js")},require('_process'))
-},{"../../../../../../../allex-toolbox-dev/node_modules/browserify/node_modules/insert-module-globals/node_modules/is-buffer/index.js":9,"./abstract-chained-batch":43,"./abstract-iterator":44,"_process":11,"xtend":46}],46:[function(require,module,exports){
+}).call(this,{"isBuffer":require("../../../allex-toolbox-dev/node_modules/browserify/node_modules/insert-module-globals/node_modules/is-buffer/index.js")},require('_process'))
+},{"../../../allex-toolbox-dev/node_modules/browserify/node_modules/insert-module-globals/node_modules/is-buffer/index.js":9,"./abstract-chained-batch":41,"./abstract-iterator":42,"_process":11,"xtend":44}],44:[function(require,module,exports){
 module.exports = extend
 
 function extend() {
@@ -7139,12 +7108,1059 @@ function extend() {
     return target
 }
 
-},{}],47:[function(require,module,exports){
+},{}],45:[function(require,module,exports){
+(function (Buffer){
+// Copyright Joyent, Inc. and other Node contributors.
+//
+// Permission is hereby granted, free of charge, to any person obtaining a
+// copy of this software and associated documentation files (the
+// "Software"), to deal in the Software without restriction, including
+// without limitation the rights to use, copy, modify, merge, publish,
+// distribute, sublicense, and/or sell copies of the Software, and to permit
+// persons to whom the Software is furnished to do so, subject to the
+// following conditions:
+//
+// The above copyright notice and this permission notice shall be included
+// in all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+// OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+// MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN
+// NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+// DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
+// OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
+// USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+// NOTE: These type checking functions intentionally don't use `instanceof`
+// because it is fragile and can be easily faked with `Object.create()`.
+
+function isArray(arg) {
+  if (Array.isArray) {
+    return Array.isArray(arg);
+  }
+  return objectToString(arg) === '[object Array]';
+}
+exports.isArray = isArray;
+
+function isBoolean(arg) {
+  return typeof arg === 'boolean';
+}
+exports.isBoolean = isBoolean;
+
+function isNull(arg) {
+  return arg === null;
+}
+exports.isNull = isNull;
+
+function isNullOrUndefined(arg) {
+  return arg == null;
+}
+exports.isNullOrUndefined = isNullOrUndefined;
+
+function isNumber(arg) {
+  return typeof arg === 'number';
+}
+exports.isNumber = isNumber;
+
+function isString(arg) {
+  return typeof arg === 'string';
+}
+exports.isString = isString;
+
+function isSymbol(arg) {
+  return typeof arg === 'symbol';
+}
+exports.isSymbol = isSymbol;
+
+function isUndefined(arg) {
+  return arg === void 0;
+}
+exports.isUndefined = isUndefined;
+
+function isRegExp(re) {
+  return objectToString(re) === '[object RegExp]';
+}
+exports.isRegExp = isRegExp;
+
+function isObject(arg) {
+  return typeof arg === 'object' && arg !== null;
+}
+exports.isObject = isObject;
+
+function isDate(d) {
+  return objectToString(d) === '[object Date]';
+}
+exports.isDate = isDate;
+
+function isError(e) {
+  return (objectToString(e) === '[object Error]' || e instanceof Error);
+}
+exports.isError = isError;
+
+function isFunction(arg) {
+  return typeof arg === 'function';
+}
+exports.isFunction = isFunction;
+
+function isPrimitive(arg) {
+  return arg === null ||
+         typeof arg === 'boolean' ||
+         typeof arg === 'number' ||
+         typeof arg === 'string' ||
+         typeof arg === 'symbol' ||  // ES6 symbol
+         typeof arg === 'undefined';
+}
+exports.isPrimitive = isPrimitive;
+
+exports.isBuffer = Buffer.isBuffer;
+
+function objectToString(o) {
+  return Object.prototype.toString.call(o);
+}
+
+}).call(this,{"isBuffer":require("../../../../allex-toolbox-dev/node_modules/browserify/node_modules/insert-module-globals/node_modules/is-buffer/index.js")})
+},{"../../../../allex-toolbox-dev/node_modules/browserify/node_modules/insert-module-globals/node_modules/is-buffer/index.js":9}],46:[function(require,module,exports){
+var util = require('util')
+  , AbstractIterator = require('abstract-leveldown').AbstractIterator
+
+
+function DeferredIterator (options) {
+  AbstractIterator.call(this, options)
+
+  this._options = options
+  this._iterator = null
+  this._operations = []
+}
+
+util.inherits(DeferredIterator, AbstractIterator)
+
+DeferredIterator.prototype.setDb = function (db) {
+  var it = this._iterator = db.iterator(this._options)
+  this._operations.forEach(function (op) {
+    it[op.method].apply(it, op.args)
+  })
+}
+
+DeferredIterator.prototype._operation = function (method, args) {
+  if (this._iterator)
+    return this._iterator[method].apply(this._iterator, args)
+  this._operations.push({ method: method, args: args })
+}
+
+'next end'.split(' ').forEach(function (m) {
+  DeferredIterator.prototype['_' + m] = function () {
+    this._operation(m, arguments)
+  }
+})
+
+module.exports = DeferredIterator;
+
+},{"abstract-leveldown":51,"util":30}],47:[function(require,module,exports){
+(function (Buffer,process){
+var util              = require('util')
+  , AbstractLevelDOWN = require('abstract-leveldown').AbstractLevelDOWN
+  , DeferredIterator  = require('./deferred-iterator')
+
+function DeferredLevelDOWN (location) {
+  AbstractLevelDOWN.call(this, typeof location == 'string' ? location : '') // optional location, who cares?
+  this._db         = undefined
+  this._operations = []
+  this._iterators  = []
+}
+
+util.inherits(DeferredLevelDOWN, AbstractLevelDOWN)
+
+// called by LevelUP when we have a real DB to take its place
+DeferredLevelDOWN.prototype.setDb = function (db) {
+  this._db = db
+  this._operations.forEach(function (op) {
+    db[op.method].apply(db, op.args)
+  })
+  this._iterators.forEach(function (it) {
+    it.setDb(db)
+  })
+}
+
+DeferredLevelDOWN.prototype._open = function (options, callback) {
+  return process.nextTick(callback)
+}
+
+// queue a new deferred operation
+DeferredLevelDOWN.prototype._operation = function (method, args) {
+  if (this._db)
+    return this._db[method].apply(this._db, args)
+  this._operations.push({ method: method, args: args })
+}
+
+// deferrables
+'put get del batch approximateSize'.split(' ').forEach(function (m) {
+  DeferredLevelDOWN.prototype['_' + m] = function () {
+    this._operation(m, arguments)
+  }
+})
+
+DeferredLevelDOWN.prototype._isBuffer = function (obj) {
+  return Buffer.isBuffer(obj)
+}
+
+DeferredLevelDOWN.prototype._iterator = function (options) {
+  if (this._db)
+    return this._db.iterator.apply(this._db, arguments)
+  var it = new DeferredIterator(options)
+  this._iterators.push(it)
+  return it
+}
+
+module.exports                  = DeferredLevelDOWN
+module.exports.DeferredIterator = DeferredIterator
+
+}).call(this,{"isBuffer":require("../../../allex-toolbox-dev/node_modules/browserify/node_modules/insert-module-globals/node_modules/is-buffer/index.js")},require('_process'))
+},{"../../../allex-toolbox-dev/node_modules/browserify/node_modules/insert-module-globals/node_modules/is-buffer/index.js":9,"./deferred-iterator":46,"_process":11,"abstract-leveldown":51,"util":30}],48:[function(require,module,exports){
+(function (process){
+/* Copyright (c) 2013 Rod Vagg, MIT License */
+
+function AbstractChainedBatch (db) {
+  this._db         = db
+  this._operations = []
+  this._written    = false
+}
+
+AbstractChainedBatch.prototype._checkWritten = function () {
+  if (this._written)
+    throw new Error('write() already called on this batch')
+}
+
+AbstractChainedBatch.prototype.put = function (key, value) {
+  this._checkWritten()
+
+  var err = this._db._checkKey(key, 'key', this._db._isBuffer)
+  if (err)
+    throw err
+
+  if (!this._db._isBuffer(key)) key = String(key)
+  if (!this._db._isBuffer(value)) value = String(value)
+
+  if (typeof this._put == 'function' )
+    this._put(key, value)
+  else
+    this._operations.push({ type: 'put', key: key, value: value })
+
+  return this
+}
+
+AbstractChainedBatch.prototype.del = function (key) {
+  this._checkWritten()
+
+  var err = this._db._checkKey(key, 'key', this._db._isBuffer)
+  if (err) throw err
+
+  if (!this._db._isBuffer(key)) key = String(key)
+
+  if (typeof this._del == 'function' )
+    this._del(key)
+  else
+    this._operations.push({ type: 'del', key: key })
+
+  return this
+}
+
+AbstractChainedBatch.prototype.clear = function () {
+  this._checkWritten()
+
+  this._operations = []
+
+  if (typeof this._clear == 'function' )
+    this._clear()
+
+  return this
+}
+
+AbstractChainedBatch.prototype.write = function (options, callback) {
+  this._checkWritten()
+
+  if (typeof options == 'function')
+    callback = options
+  if (typeof callback != 'function')
+    throw new Error('write() requires a callback argument')
+  if (typeof options != 'object')
+    options = {}
+
+  this._written = true
+
+  if (typeof this._write == 'function' )
+    return this._write(callback)
+
+  if (typeof this._db._batch == 'function')
+    return this._db._batch(this._operations, options, callback)
+
+  process.nextTick(callback)
+}
+
+module.exports = AbstractChainedBatch
+}).call(this,require('_process'))
+},{"_process":11}],49:[function(require,module,exports){
+arguments[4][42][0].apply(exports,arguments)
+},{"_process":11,"dup":42}],50:[function(require,module,exports){
+(function (Buffer,process){
+/* Copyright (c) 2013 Rod Vagg, MIT License */
+
+var xtend                = require('xtend')
+  , AbstractIterator     = require('./abstract-iterator')
+  , AbstractChainedBatch = require('./abstract-chained-batch')
+
+function AbstractLevelDOWN (location) {
+  if (!arguments.length || location === undefined)
+    throw new Error('constructor requires at least a location argument')
+
+  if (typeof location != 'string')
+    throw new Error('constructor requires a location string argument')
+
+  this.location = location
+  this.status = 'new'
+}
+
+AbstractLevelDOWN.prototype.open = function (options, callback) {
+  var self      = this
+    , oldStatus = this.status
+
+  if (typeof options == 'function')
+    callback = options
+
+  if (typeof callback != 'function')
+    throw new Error('open() requires a callback argument')
+
+  if (typeof options != 'object')
+    options = {}
+
+  options.createIfMissing = options.createIfMissing != false
+  options.errorIfExists = !!options.errorIfExists
+
+  if (typeof this._open == 'function') {
+    this.status = 'opening'
+    this._open(options, function (err) {
+      if (err) {
+        self.status = oldStatus
+        return callback(err)
+      }
+      self.status = 'open'
+      callback()
+    })
+  } else {
+    this.status = 'open'
+    process.nextTick(callback)
+  }
+}
+
+AbstractLevelDOWN.prototype.close = function (callback) {
+  var self      = this
+    , oldStatus = this.status
+
+  if (typeof callback != 'function')
+    throw new Error('close() requires a callback argument')
+
+  if (typeof this._close == 'function') {
+    this.status = 'closing'
+    this._close(function (err) {
+      if (err) {
+        self.status = oldStatus
+        return callback(err)
+      }
+      self.status = 'closed'
+      callback()
+    })
+  } else {
+    this.status = 'closed'
+    process.nextTick(callback)
+  }
+}
+
+AbstractLevelDOWN.prototype.get = function (key, options, callback) {
+  var err
+
+  if (typeof options == 'function')
+    callback = options
+
+  if (typeof callback != 'function')
+    throw new Error('get() requires a callback argument')
+
+  if (err = this._checkKey(key, 'key', this._isBuffer))
+    return callback(err)
+
+  if (!this._isBuffer(key))
+    key = String(key)
+
+  if (typeof options != 'object')
+    options = {}
+
+  options.asBuffer = options.asBuffer != false
+
+  if (typeof this._get == 'function')
+    return this._get(key, options, callback)
+
+  process.nextTick(function () { callback(new Error('NotFound')) })
+}
+
+AbstractLevelDOWN.prototype.put = function (key, value, options, callback) {
+  var err
+
+  if (typeof options == 'function')
+    callback = options
+
+  if (typeof callback != 'function')
+    throw new Error('put() requires a callback argument')
+
+  if (err = this._checkKey(key, 'key', this._isBuffer))
+    return callback(err)
+
+  if (!this._isBuffer(key))
+    key = String(key)
+
+  // coerce value to string in node, don't touch it in browser
+  // (indexeddb can store any JS type)
+  if (value != null && !this._isBuffer(value) && !process.browser)
+    value = String(value)
+
+  if (typeof options != 'object')
+    options = {}
+
+  if (typeof this._put == 'function')
+    return this._put(key, value, options, callback)
+
+  process.nextTick(callback)
+}
+
+AbstractLevelDOWN.prototype.del = function (key, options, callback) {
+  var err
+
+  if (typeof options == 'function')
+    callback = options
+
+  if (typeof callback != 'function')
+    throw new Error('del() requires a callback argument')
+
+  if (err = this._checkKey(key, 'key', this._isBuffer))
+    return callback(err)
+
+  if (!this._isBuffer(key))
+    key = String(key)
+
+  if (typeof options != 'object')
+    options = {}
+
+  if (typeof this._del == 'function')
+    return this._del(key, options, callback)
+
+  process.nextTick(callback)
+}
+
+AbstractLevelDOWN.prototype.batch = function (array, options, callback) {
+  if (!arguments.length)
+    return this._chainedBatch()
+
+  if (typeof options == 'function')
+    callback = options
+
+  if (typeof array == 'function')
+    callback = array
+
+  if (typeof callback != 'function')
+    throw new Error('batch(array) requires a callback argument')
+
+  if (!Array.isArray(array))
+    return callback(new Error('batch(array) requires an array argument'))
+
+  if (!options || typeof options != 'object')
+    options = {}
+
+  var i = 0
+    , l = array.length
+    , e
+    , err
+
+  for (; i < l; i++) {
+    e = array[i]
+    if (typeof e != 'object')
+      continue
+
+    if (err = this._checkKey(e.type, 'type', this._isBuffer))
+      return callback(err)
+
+    if (err = this._checkKey(e.key, 'key', this._isBuffer))
+      return callback(err)
+  }
+
+  if (typeof this._batch == 'function')
+    return this._batch(array, options, callback)
+
+  process.nextTick(callback)
+}
+
+//TODO: remove from here, not a necessary primitive
+AbstractLevelDOWN.prototype.approximateSize = function (start, end, callback) {
+  if (   start == null
+      || end == null
+      || typeof start == 'function'
+      || typeof end == 'function') {
+    throw new Error('approximateSize() requires valid `start`, `end` and `callback` arguments')
+  }
+
+  if (typeof callback != 'function')
+    throw new Error('approximateSize() requires a callback argument')
+
+  if (!this._isBuffer(start))
+    start = String(start)
+
+  if (!this._isBuffer(end))
+    end = String(end)
+
+  if (typeof this._approximateSize == 'function')
+    return this._approximateSize(start, end, callback)
+
+  process.nextTick(function () {
+    callback(null, 0)
+  })
+}
+
+AbstractLevelDOWN.prototype._setupIteratorOptions = function (options) {
+  var self = this
+
+  options = xtend(options)
+
+  ;[ 'start', 'end', 'gt', 'gte', 'lt', 'lte' ].forEach(function (o) {
+    if (options[o] && self._isBuffer(options[o]) && options[o].length === 0)
+      delete options[o]
+  })
+
+  options.reverse = !!options.reverse
+  options.keys = options.keys != false
+  options.values = options.values != false
+  options.limit = 'limit' in options ? options.limit : -1
+  options.keyAsBuffer = options.keyAsBuffer != false
+  options.valueAsBuffer = options.valueAsBuffer != false
+
+  return options
+}
+
+AbstractLevelDOWN.prototype.iterator = function (options) {
+  if (typeof options != 'object')
+    options = {}
+
+  options = this._setupIteratorOptions(options)
+
+  if (typeof this._iterator == 'function')
+    return this._iterator(options)
+
+  return new AbstractIterator(this)
+}
+
+AbstractLevelDOWN.prototype._chainedBatch = function () {
+  return new AbstractChainedBatch(this)
+}
+
+AbstractLevelDOWN.prototype._isBuffer = function (obj) {
+  return Buffer.isBuffer(obj)
+}
+
+AbstractLevelDOWN.prototype._checkKey = function (obj, type) {
+
+  if (obj === null || obj === undefined)
+    return new Error(type + ' cannot be `null` or `undefined`')
+
+  if (this._isBuffer(obj)) {
+    if (obj.length === 0)
+      return new Error(type + ' cannot be an empty Buffer')
+  } else if (String(obj) === '')
+    return new Error(type + ' cannot be an empty String')
+}
+
+module.exports = AbstractLevelDOWN
+
+}).call(this,{"isBuffer":require("../../../../../allex-toolbox-dev/node_modules/browserify/node_modules/insert-module-globals/node_modules/is-buffer/index.js")},require('_process'))
+},{"../../../../../allex-toolbox-dev/node_modules/browserify/node_modules/insert-module-globals/node_modules/is-buffer/index.js":9,"./abstract-chained-batch":48,"./abstract-iterator":49,"_process":11,"xtend":53}],51:[function(require,module,exports){
+exports.AbstractLevelDOWN    = require('./abstract-leveldown')
+exports.AbstractIterator     = require('./abstract-iterator')
+exports.AbstractChainedBatch = require('./abstract-chained-batch')
+exports.isLevelDOWN          = require('./is-leveldown')
+
+},{"./abstract-chained-batch":48,"./abstract-iterator":49,"./abstract-leveldown":50,"./is-leveldown":52}],52:[function(require,module,exports){
+var AbstractLevelDOWN = require('./abstract-leveldown')
+
+function isLevelDOWN (db) {
+  if (!db || typeof db !== 'object')
+    return false
+  return Object.keys(AbstractLevelDOWN.prototype).filter(function (name) {
+    // TODO remove approximateSize check when method is gone
+    return name[0] != '_' && name != 'approximateSize'
+  }).every(function (name) {
+    return typeof db[name] == 'function'
+  })
+}
+
+module.exports = isLevelDOWN
+
+},{"./abstract-leveldown":50}],53:[function(require,module,exports){
+module.exports = extend
+
+var hasOwnProperty = Object.prototype.hasOwnProperty;
+
+function extend() {
+    var target = {}
+
+    for (var i = 0; i < arguments.length; i++) {
+        var source = arguments[i]
+
+        for (var key in source) {
+            if (hasOwnProperty.call(source, key)) {
+                target[key] = source[key]
+            }
+        }
+    }
+
+    return target
+}
+
+},{}],54:[function(require,module,exports){
+var prr = require('prr')
+
+function init (type, message, cause) {
+  prr(this, {
+      type    : type
+    , name    : type
+      // can be passed just a 'cause'
+    , cause   : typeof message != 'string' ? message : cause
+    , message : !!message && typeof message != 'string' ? message.message : message
+
+  }, 'ewr')
+}
+
+// generic prototype, not intended to be actually used - helpful for `instanceof`
+function CustomError (message, cause) {
+  Error.call(this)
+  if (Error.captureStackTrace)
+    Error.captureStackTrace(this, arguments.callee)
+  init.call(this, 'CustomError', message, cause)
+}
+
+CustomError.prototype = new Error()
+
+function createError (errno, type, proto) {
+  var err = function (message, cause) {
+    init.call(this, type, message, cause)
+    //TODO: the specificity here is stupid, errno should be available everywhere
+    if (type == 'FilesystemError') {
+      this.code    = this.cause.code
+      this.path    = this.cause.path
+      this.errno   = this.cause.errno
+      this.message =
+        (errno.errno[this.cause.errno]
+          ? errno.errno[this.cause.errno].description
+          : this.cause.message)
+        + (this.cause.path ? ' [' + this.cause.path + ']' : '')
+    }
+    Error.call(this)
+    if (Error.captureStackTrace)
+      Error.captureStackTrace(this, arguments.callee)
+  }
+  err.prototype = !!proto ? new proto() : new CustomError()
+  return err
+}
+
+module.exports = function (errno) {
+  var ce = function (type, proto) {
+    return createError(errno, type, proto)
+  }
+  return {
+      CustomError     : CustomError
+    , FilesystemError : ce('FilesystemError')
+    , createError     : ce
+  }
+}
+
+},{"prr":56}],55:[function(require,module,exports){
+var all = module.exports.all = [
+  {
+    errno: -2,
+    code: 'ENOENT',
+    description: 'no such file or directory'
+  },
+  {
+    errno: -1,
+    code: 'UNKNOWN',
+    description: 'unknown error'
+  },
+  {
+    errno: 0,
+    code: 'OK',
+    description: 'success'
+  },
+  {
+    errno: 1,
+    code: 'EOF',
+    description: 'end of file'
+  },
+  {
+    errno: 2,
+    code: 'EADDRINFO',
+    description: 'getaddrinfo error'
+  },
+  {
+    errno: 3,
+    code: 'EACCES',
+    description: 'permission denied'
+  },
+  {
+    errno: 4,
+    code: 'EAGAIN',
+    description: 'resource temporarily unavailable'
+  },
+  {
+    errno: 5,
+    code: 'EADDRINUSE',
+    description: 'address already in use'
+  },
+  {
+    errno: 6,
+    code: 'EADDRNOTAVAIL',
+    description: 'address not available'
+  },
+  {
+    errno: 7,
+    code: 'EAFNOSUPPORT',
+    description: 'address family not supported'
+  },
+  {
+    errno: 8,
+    code: 'EALREADY',
+    description: 'connection already in progress'
+  },
+  {
+    errno: 9,
+    code: 'EBADF',
+    description: 'bad file descriptor'
+  },
+  {
+    errno: 10,
+    code: 'EBUSY',
+    description: 'resource busy or locked'
+  },
+  {
+    errno: 11,
+    code: 'ECONNABORTED',
+    description: 'software caused connection abort'
+  },
+  {
+    errno: 12,
+    code: 'ECONNREFUSED',
+    description: 'connection refused'
+  },
+  {
+    errno: 13,
+    code: 'ECONNRESET',
+    description: 'connection reset by peer'
+  },
+  {
+    errno: 14,
+    code: 'EDESTADDRREQ',
+    description: 'destination address required'
+  },
+  {
+    errno: 15,
+    code: 'EFAULT',
+    description: 'bad address in system call argument'
+  },
+  {
+    errno: 16,
+    code: 'EHOSTUNREACH',
+    description: 'host is unreachable'
+  },
+  {
+    errno: 17,
+    code: 'EINTR',
+    description: 'interrupted system call'
+  },
+  {
+    errno: 18,
+    code: 'EINVAL',
+    description: 'invalid argument'
+  },
+  {
+    errno: 19,
+    code: 'EISCONN',
+    description: 'socket is already connected'
+  },
+  {
+    errno: 20,
+    code: 'EMFILE',
+    description: 'too many open files'
+  },
+  {
+    errno: 21,
+    code: 'EMSGSIZE',
+    description: 'message too long'
+  },
+  {
+    errno: 22,
+    code: 'ENETDOWN',
+    description: 'network is down'
+  },
+  {
+    errno: 23,
+    code: 'ENETUNREACH',
+    description: 'network is unreachable'
+  },
+  {
+    errno: 24,
+    code: 'ENFILE',
+    description: 'file table overflow'
+  },
+  {
+    errno: 25,
+    code: 'ENOBUFS',
+    description: 'no buffer space available'
+  },
+  {
+    errno: 26,
+    code: 'ENOMEM',
+    description: 'not enough memory'
+  },
+  {
+    errno: 27,
+    code: 'ENOTDIR',
+    description: 'not a directory'
+  },
+  {
+    errno: 28,
+    code: 'EISDIR',
+    description: 'illegal operation on a directory'
+  },
+  {
+    errno: 29,
+    code: 'ENONET',
+    description: 'machine is not on the network'
+  },
+  {
+    errno: 31,
+    code: 'ENOTCONN',
+    description: 'socket is not connected'
+  },
+  {
+    errno: 32,
+    code: 'ENOTSOCK',
+    description: 'socket operation on non-socket'
+  },
+  {
+    errno: 33,
+    code: 'ENOTSUP',
+    description: 'operation not supported on socket'
+  },
+  {
+    errno: 34,
+    code: 'ENOENT',
+    description: 'no such file or directory'
+  },
+  {
+    errno: 35,
+    code: 'ENOSYS',
+    description: 'function not implemented'
+  },
+  {
+    errno: 36,
+    code: 'EPIPE',
+    description: 'broken pipe'
+  },
+  {
+    errno: 37,
+    code: 'EPROTO',
+    description: 'protocol error'
+  },
+  {
+    errno: 38,
+    code: 'EPROTONOSUPPORT',
+    description: 'protocol not supported'
+  },
+  {
+    errno: 39,
+    code: 'EPROTOTYPE',
+    description: 'protocol wrong type for socket'
+  },
+  {
+    errno: 40,
+    code: 'ETIMEDOUT',
+    description: 'connection timed out'
+  },
+  {
+    errno: 41,
+    code: 'ECHARSET',
+    description: 'invalid Unicode character'
+  },
+  {
+    errno: 42,
+    code: 'EAIFAMNOSUPPORT',
+    description: 'address family for hostname not supported'
+  },
+  {
+    errno: 44,
+    code: 'EAISERVICE',
+    description: 'servname not supported for ai_socktype'
+  },
+  {
+    errno: 45,
+    code: 'EAISOCKTYPE',
+    description: 'ai_socktype not supported'
+  },
+  {
+    errno: 46,
+    code: 'ESHUTDOWN',
+    description: 'cannot send after transport endpoint shutdown'
+  },
+  {
+    errno: 47,
+    code: 'EEXIST',
+    description: 'file already exists'
+  },
+  {
+    errno: 48,
+    code: 'ESRCH',
+    description: 'no such process'
+  },
+  {
+    errno: 49,
+    code: 'ENAMETOOLONG',
+    description: 'name too long'
+  },
+  {
+    errno: 50,
+    code: 'EPERM',
+    description: 'operation not permitted'
+  },
+  {
+    errno: 51,
+    code: 'ELOOP',
+    description: 'too many symbolic links encountered'
+  },
+  {
+    errno: 52,
+    code: 'EXDEV',
+    description: 'cross-device link not permitted'
+  },
+  {
+    errno: 53,
+    code: 'ENOTEMPTY',
+    description: 'directory not empty'
+  },
+  {
+    errno: 54,
+    code: 'ENOSPC',
+    description: 'no space left on device'
+  },
+  {
+    errno: 55,
+    code: 'EIO',
+    description: 'i/o error'
+  },
+  {
+    errno: 56,
+    code: 'EROFS',
+    description: 'read-only file system'
+  },
+  {
+    errno: 57,
+    code: 'ENODEV',
+    description: 'no such device'
+  },
+  {
+    errno: 58,
+    code: 'ESPIPE',
+    description: 'invalid seek'
+  },
+  {
+    errno: 59,
+    code: 'ECANCELED',
+    description: 'operation canceled'
+  }
+]
+
+module.exports.errno = {}
+module.exports.code = {}
+
+all.forEach(function (error) {
+  module.exports.errno[error.errno] = error
+  module.exports.code[error.code] = error
+})
+
+module.exports.custom = require('./custom')(module.exports)
+module.exports.create = module.exports.custom.createError
+
+},{"./custom":54}],56:[function(require,module,exports){
+/*!
+  * prr
+  * (c) 2013 Rod Vagg <rod@vagg.org>
+  * https://github.com/rvagg/prr
+  * License: MIT
+  */
+
+(function (name, context, definition) {
+  if (typeof module != 'undefined' && module.exports)
+    module.exports = definition()
+  else
+    context[name] = definition()
+})('prr', this, function() {
+
+  var setProperty = typeof Object.defineProperty == 'function'
+      ? function (obj, key, options) {
+          Object.defineProperty(obj, key, options)
+          return obj
+        }
+      : function (obj, key, options) { // < es5
+          obj[key] = options.value
+          return obj
+        }
+
+    , makeOptions = function (value, options) {
+        var oo = typeof options == 'object'
+          , os = !oo && typeof options == 'string'
+          , op = function (p) {
+              return oo
+                ? !!options[p]
+                : os
+                  ? options.indexOf(p[0]) > -1
+                  : false
+            }
+
+        return {
+            enumerable   : op('enumerable')
+          , configurable : op('configurable')
+          , writable     : op('writable')
+          , value        : value
+        }
+      }
+
+    , prr = function (obj, key, value, options) {
+        var k
+
+        options = makeOptions(value, options)
+
+        if (typeof key == 'object') {
+          for (k in key) {
+            if (Object.hasOwnProperty.call(key, k)) {
+              options.value = key[k]
+              setProperty(obj, k, options)
+            }
+          }
+          return obj
+        }
+
+        return setProperty(obj, key, options)
+      }
+
+  return prr
+})
+},{}],57:[function(require,module,exports){
 /*global window:false, self:false, define:false, module:false */
 
 /**
  * @license IDBWrapper - A cross-browser wrapper for IndexedDB
- * Version 1.7.0
+ * Version 1.7.1
  * Copyright (c) 2011 - 2016 Jens Arps
  * http://jensarps.de/
  *
@@ -7196,7 +8212,7 @@ function extend() {
      *
      * @constructor
      * @name IDBStore
-     * @version 1.7.0
+     * @version 1.7.1
      *
      * @param {Object} [kwArgs] An options object used to configure the store and
      *  set callbacks
@@ -7306,7 +8322,7 @@ function extend() {
          *
          * @type {String}
          */
-        version: '1.7.0',
+        version: '1.7.1',
 
         /**
          * A reference to the IndexedDB object
@@ -7426,18 +8442,23 @@ function extend() {
             var openRequest = this.idb.open(this.dbName, this.dbVersion);
             var preventSuccessCallback = false;
 
-            openRequest.onerror = function (error) {
+            openRequest.onerror = function (errorEvent) {
 
-                var gotVersionErr = false;
-                if ('error' in error.target) {
-                    gotVersionErr = error.target.error.name == 'VersionError';
-                } else if ('errorCode' in error.target) {
-                    gotVersionErr = error.target.errorCode == 12;
-                }
-
-                if (gotVersionErr) {
+                if (hasVersionError(errorEvent)) {
                     this.onError(new Error('The version number provided is lower than the existing one.'));
                 } else {
+                    var error;
+
+                    if (errorEvent.target.error) {
+                        error = errorEvent.target.error;
+                    } else {
+                        var errorMessage = 'IndexedDB unknown error occurred when opening DB ' + this.dbName + ' version ' + this.dbVersion;
+                        if ('errorCode' in errorEvent.target) {
+                            errorMessage += ' with error code ' + errorEvent.target.errorCode;
+                        }
+                        error = new Error(errorMessage);
+                    }
+
                     this.onError(error);
                 }
             }.bind(this);
@@ -8525,6 +9546,15 @@ function extend() {
         return target;
     }
 
+    function hasVersionError(errorEvent) {
+        if ('error' in errorEvent.target) {
+            return errorEvent.target.error.name == 'VersionError';
+        } else if ('errorCode' in errorEvent.target) {
+            return errorEvent.target.errorCode == 12;
+        }
+        return false;
+    }
+
     IDBStore.prototype = proto;
     IDBStore.version = proto.version;
 
@@ -8532,7 +9562,14 @@ function extend() {
 
 }, this);
 
-},{}],48:[function(require,module,exports){
+},{}],58:[function(require,module,exports){
+arguments[4][8][0].apply(exports,arguments)
+},{"dup":8}],59:[function(require,module,exports){
+module.exports = Array.isArray || function (arr) {
+  return Object.prototype.toString.call(arr) == '[object Array]';
+};
+
+},{}],60:[function(require,module,exports){
 var Buffer = require('buffer').Buffer;
 
 module.exports = isBuffer;
@@ -8542,344 +9579,539 @@ function isBuffer (o) {
     || /\[object (.+Array|Array.+)\]/.test(Object.prototype.toString.call(o));
 }
 
-},{"buffer":3}],49:[function(require,module,exports){
-(function (Buffer){
+},{"buffer":3}],61:[function(require,module,exports){
 
-exports.compare = function (a, b) {
+var Leveljs = require('level-js')
 
-  if(Buffer.isBuffer(a)) {
-    var l = Math.min(a.length, b.length)
-    for(var i = 0; i < l; i++) {
-      var cmp = a[i] - b[i]
-      if(cmp) return cmp
+module.exports = require('level-packager')(function(l) {
+  return new Leveljs(l)
+})
+
+},{"level-js":67,"level-packager":69}],62:[function(require,module,exports){
+var encodings = require('./lib/encodings');
+
+module.exports = Codec;
+
+function Codec(opts){
+  this.opts = opts || {};
+  this.encodings = encodings;
+}
+
+Codec.prototype._encoding = function(encoding){
+  if (typeof encoding == 'string') encoding = encodings[encoding];
+  if (!encoding) encoding = encodings.id;
+  return encoding;
+};
+
+Codec.prototype._keyEncoding = function(opts, batchOpts){
+  return this._encoding(batchOpts && batchOpts.keyEncoding
+    || opts && opts.keyEncoding
+    || this.opts.keyEncoding);
+};
+
+Codec.prototype._valueEncoding = function(opts, batchOpts){
+  return this._encoding(
+    batchOpts && (batchOpts.valueEncoding || batchOpts.encoding)
+    || opts && (opts.valueEncoding || opts.encoding)
+    || (this.opts.valueEncoding || this.opts.encoding));
+};
+
+Codec.prototype.encodeKey = function(key, opts, batchOpts){
+  return this._keyEncoding(opts, batchOpts).encode(key);
+};
+
+Codec.prototype.encodeValue = function(value, opts, batchOpts){
+  return this._valueEncoding(opts, batchOpts).encode(value);
+};
+
+Codec.prototype.decodeKey = function(key, opts){
+  return this._keyEncoding(opts).decode(key);
+};
+
+Codec.prototype.decodeValue = function(value, opts){
+  return this._valueEncoding(opts).decode(value);
+};
+
+Codec.prototype.encodeBatch = function(ops, opts){
+  var self = this;
+
+  return ops.map(function(_op){
+    var op = {
+      type: _op.type,
+      key: self.encodeKey(_op.key, opts, _op)
+    };
+    if (self.keyAsBuffer(opts, _op)) op.keyEncoding = 'binary';
+    if (_op.prefix) op.prefix = _op.prefix;
+    if ('value' in _op) {
+      op.value = self.encodeValue(_op.value, opts, _op);
+      if (self.valueAsBuffer(opts, _op)) op.valueEncoding = 'binary';
     }
-    return a.length - b.length
+    return op;
+  });
+};
+
+var ltgtKeys = ['lt', 'gt', 'lte', 'gte', 'start', 'end'];
+
+Codec.prototype.encodeLtgt = function(ltgt){
+  var self = this;
+  var ret = {};
+  Object.keys(ltgt).forEach(function(key){
+    ret[key] = ltgtKeys.indexOf(key) > -1
+      ? self.encodeKey(ltgt[key], ltgt)
+      : ltgt[key]
+  });
+  return ret;
+};
+
+Codec.prototype.createStreamDecoder = function(opts){
+  var self = this;
+
+  if (opts.keys && opts.values) {
+    return function(key, value){
+      return {
+        key: self.decodeKey(key, opts),
+        value: self.decodeValue(value, opts)
+      };
+    };
+  } else if (opts.keys) {
+    return function(key) {
+      return self.decodeKey(key, opts);
+    }; 
+  } else if (opts.values) {
+    return function(_, value){
+      return self.decodeValue(value, opts);
+    }
+  } else {
+    return function(){};
   }
+};
 
-  return a < b ? -1 : a > b ? 1 : 0
-}
+Codec.prototype.keyAsBuffer = function(opts){
+  return this._keyEncoding(opts).buffer;
+};
 
-function has(obj, key) {
-  return Object.hasOwnProperty.call(obj, key)
-}
+Codec.prototype.valueAsBuffer = function(opts){
+  return this._valueEncoding(opts).buffer;
+};
 
-// to be compatible with the current abstract-leveldown tests
-// nullish or empty strings.
-// I could use !!val but I want to permit numbers and booleans,
-// if possible.
 
-function isDef (val) {
-  return val !== undefined && val !== ''
-}
-
-function has (range, name) {
-  return Object.hasOwnProperty.call(range, name)
-}
-
-function hasKey(range, name) {
-  return Object.hasOwnProperty.call(range, name) && name
-}
-
-var lowerBoundKey = exports.lowerBoundKey = function (range) {
-    return (
-       hasKey(range, 'gt')
-    || hasKey(range, 'gte')
-    || hasKey(range, 'min')
-    || (range.reverse ? hasKey(range, 'end') : hasKey(range, 'start'))
-    || undefined
-    )
-}
-
-var lowerBound = exports.lowerBound = function (range) {
-  var k = lowerBoundKey(range)
-  return k && range[k]
-}
-
-exports.lowerBoundInclusive = function (range) {
-  return has(range, 'gt') ? false : true
-}
-
-exports.upperBoundInclusive =
-  function (range) {
-    return has(range, 'lt') || !range.minEx ? false : true
-  }
-
-var lowerBoundExclusive = exports.lowerBoundExclusive =
-  function (range) {
-    return has(range, 'gt') || range.minEx ? true : false
-  }
-
-var upperBoundExclusive = exports.upperBoundExclusive =
-  function (range) {
-    return has(range, 'lt') ? true : false
-  }
-
-var upperBoundKey = exports.upperBoundKey = function (range) {
-    return (
-       hasKey(range, 'lt')
-    || hasKey(range, 'lte')
-    || hasKey(range, 'max')
-    || (range.reverse ? hasKey(range, 'start') : hasKey(range, 'end'))
-    || undefined
-    )
-}
-
-var upperBound = exports.upperBound = function (range) {
-  var k = upperBoundKey(range)
-  return k && range[k]
-}
-
-function id (e) { return e }
-
-exports.toLtgt = function (range, _range, map, lower, upper) {
-  _range = _range || {}
-  map = map || id
-  var defaults = arguments.length > 3
-  var lb = exports.lowerBoundKey(range)
-  var ub = exports.upperBoundKey(range)
-  if(lb) {
-    if(lb === 'gt') _range.gt = map(range.gt, false)
-    else            _range.gte = map(range[lb], false)
-  }
-  else if(defaults)
-    _range.gte = map(lower, false)
-
-  if(ub) {
-    if(ub === 'lt') _range.lt = map(range.lt, true)
-    else            _range.lte = map(range[ub], true)
-  }
-  else if(defaults)
-    _range.lte = map(upper, true)
-
-  if(range.reverse != null)
-    _range.reverse = !!range.reverse
-
-  //if range was used mutably
-  //(in level-sublevel it's part of an options object
-  //that has more properties on it.)
-  if(has(_range, 'max'))   delete _range.max
-  if(has(_range, 'min'))   delete _range.min
-  if(has(_range, 'start')) delete _range.start
-  if(has(_range, 'end'))   delete _range.end
-
-  return _range
-}
-
-exports.contains = function (range, key, compare) {
-  compare = compare || exports.compare
-
-  var lb = lowerBound(range)
-  if(isDef(lb)) {
-    var cmp = compare(key, lb)
-    if(cmp < 0 || (cmp === 0 && lowerBoundExclusive(range)))
-      return false
-  }
-
-  var ub = upperBound(range)
-  if(isDef(ub)) {
-    var cmp = compare(key, ub)
-    if(cmp > 0 || (cmp === 0) && upperBoundExclusive(range))
-      return false
-  }
-
-  return true
-}
-
-exports.filter = function (range, compare) {
-  return function (key) {
-    return exports.contains(range, key, compare)
-  }
-}
-
-}).call(this,{"isBuffer":require("../../../../../../../allex-toolbox-dev/node_modules/browserify/node_modules/insert-module-globals/node_modules/is-buffer/index.js")})
-},{"../../../../../../../allex-toolbox-dev/node_modules/browserify/node_modules/insert-module-globals/node_modules/is-buffer/index.js":9}],50:[function(require,module,exports){
+},{"./lib/encodings":63}],63:[function(require,module,exports){
 (function (Buffer){
-/**
- * Convert a typed array to a Buffer without a copy
- *
- * Author:   Feross Aboukhadijeh <feross@feross.org> <http://feross.org>
- * License:  MIT
- *
- * `npm install typedarray-to-buffer`
+
+exports.utf8 = exports['utf-8'] = {
+  encode: function(data){
+    return isBinary(data)
+      ? data
+      : String(data);
+  },
+  decode: identity,
+  buffer: false,
+  type: 'utf8'
+};
+
+exports.json = {
+  encode: JSON.stringify,
+  decode: JSON.parse,
+  buffer: false,
+  type: 'json'
+};
+
+exports.binary = {
+  encode: function(data){
+    return isBinary(data)
+      ? data
+      : new Buffer(data);      
+  },
+  decode: identity,
+  buffer: true,
+  type: 'binary'
+};
+
+exports.id = {
+  encode: function(data){
+    return data;
+  },
+  decode: function(data){
+    return data;
+  },
+  buffer: false,
+  type: 'id'
+};
+
+var bufferEncodings = [
+  'hex',
+  'ascii',
+  'base64',
+  'ucs2',
+  'ucs-2',
+  'utf16le',
+  'utf-16le'
+];
+
+bufferEncodings.forEach(function(type){
+  exports[type] = {
+    encode: function(data){
+      return isBinary(data)
+        ? data
+        : new Buffer(data, type);
+    },
+    decode: function(buffer){
+      return buffer.toString(type);
+    },
+    buffer: true,
+    type: type
+  };
+});
+
+function identity(value){
+  return value;
+}
+
+function isBinary(data){
+  return data === undefined
+    || data === null
+    || Buffer.isBuffer(data);
+}
+
+
+}).call(this,require("buffer").Buffer)
+},{"buffer":3}],64:[function(require,module,exports){
+/* Copyright (c) 2012-2015 LevelUP contributors
+ * See list at <https://github.com/rvagg/node-levelup#contributing>
+ * MIT License
+ * <https://github.com/rvagg/node-levelup/blob/master/LICENSE.md>
  */
 
-module.exports = function (arr) {
-  if (typeof Buffer._augment === 'function' && Buffer.TYPED_ARRAY_SUPPORT) {
-    // If `Buffer` is from the `buffer` module and this browser supports typed arrays,
-    // then augment it with all the `Buffer` methods.
-    return Buffer._augment(arr)
-  } else {
-    // Otherwise, fallback to creating a `Buffer` with a copy.
-    return new Buffer(arr)
+var createError   = require('errno').create
+  , LevelUPError  = createError('LevelUPError')
+  , NotFoundError = createError('NotFoundError', LevelUPError)
+
+NotFoundError.prototype.notFound = true
+NotFoundError.prototype.status   = 404
+
+module.exports = {
+    LevelUPError        : LevelUPError
+  , InitializationError : createError('InitializationError', LevelUPError)
+  , OpenError           : createError('OpenError', LevelUPError)
+  , ReadError           : createError('ReadError', LevelUPError)
+  , WriteError          : createError('WriteError', LevelUPError)
+  , NotFoundError       : NotFoundError
+  , EncodingError       : createError('EncodingError', LevelUPError)
+}
+
+},{"errno":55}],65:[function(require,module,exports){
+var inherits = require('inherits');
+var Readable = require('readable-stream').Readable;
+var extend = require('xtend');
+var EncodingError = require('level-errors').EncodingError;
+
+module.exports = ReadStream;
+inherits(ReadStream, Readable);
+
+function ReadStream(iterator, options){
+  if (!(this instanceof ReadStream)) return new ReadStream(iterator, options);
+  Readable.call(this, extend(options, {
+    objectMode: true
+  }));
+  this._iterator = iterator;
+  this._destroyed = false;
+  this._decoder = null;
+  if (options && options.decoder) this._decoder = options.decoder;
+  this.on('end', this._cleanup.bind(this));
+}
+
+ReadStream.prototype._read = function(){
+  var self = this;
+  if (this._destroyed) return;
+
+  this._iterator.next(function(err, key, value){
+    if (self._destroyed) return;
+    if (err) return self.emit('error', err);
+    if (key === undefined && value === undefined) {
+      self.push(null);
+    } else {
+      if (!self._decoder) return self.push({ key: key, value: value });
+
+      try {
+        var value = self._decoder(key, value);
+      } catch (err) {
+        self.emit('error', new EncodingError(err));
+        self.push(null);
+        return;
+      }
+      self.push(value);
+    }
+  });
+};
+
+ReadStream.prototype.destroy =
+ReadStream.prototype._cleanup = function(){
+  var self = this;
+  if (this._destroyed) return;
+  this._destroyed = true;
+
+  this._iterator.end(function(err){
+    if (err) return self.emit('error', err);
+    self.emit('close');
+  });
+};
+
+
+},{"inherits":58,"level-errors":64,"readable-stream":87,"xtend":66}],66:[function(require,module,exports){
+arguments[4][53][0].apply(exports,arguments)
+},{"dup":53}],67:[function(require,module,exports){
+(function (Buffer){
+module.exports = Level
+
+var IDB = require('idb-wrapper')
+var AbstractLevelDOWN = require('abstract-leveldown').AbstractLevelDOWN
+var util = require('util')
+var Iterator = require('./iterator')
+var isBuffer = require('isbuffer')
+var xtend = require('xtend')
+var toBuffer = require('typedarray-to-buffer')
+
+function Level(location) {
+  if (!(this instanceof Level)) return new Level(location)
+  if (!location) throw new Error("constructor requires at least a location argument")
+  this.IDBOptions = {}
+  this.location = location
+}
+
+util.inherits(Level, AbstractLevelDOWN)
+
+Level.prototype._open = function(options, callback) {
+  var self = this
+    
+  var idbOpts = {
+    storeName: this.location,
+    autoIncrement: false,
+    keyPath: null,
+    onStoreReady: function () {
+      callback && callback(null, self.idb)
+    }, 
+    onError: function(err) {
+      callback && callback(err)
+    }
   }
+  
+  xtend(idbOpts, options)
+  this.IDBOptions = idbOpts
+  this.idb = new IDB(idbOpts)
+}
+
+Level.prototype._get = function (key, options, callback) {
+  this.idb.get(key, function (value) {
+    if (value === undefined) {
+      // 'NotFound' error, consistent with LevelDOWN API
+      return callback(new Error('NotFound'))
+    }
+    // by default return buffers, unless explicitly told not to
+    var asBuffer = true
+    if (options.asBuffer === false) asBuffer = false
+    if (options.raw) asBuffer = false
+    if (asBuffer) {
+      if (value instanceof Uint8Array) value = toBuffer(value)
+      else value = new Buffer(String(value))
+    }
+    return callback(null, value, key)
+  }, callback)
+}
+
+Level.prototype._del = function(id, options, callback) {
+  this.idb.remove(id, callback, callback)
+}
+
+Level.prototype._put = function (key, value, options, callback) {
+  if (value instanceof ArrayBuffer) {
+    value = toBuffer(new Uint8Array(value))
+  }
+  var obj = this.convertEncoding(key, value, options)
+  if (Buffer.isBuffer(obj.value)) {
+    if (typeof value.toArrayBuffer === 'function') {
+      obj.value = new Uint8Array(value.toArrayBuffer())
+    } else {
+      obj.value = new Uint8Array(value)
+    }
+  }
+  this.idb.put(obj.key, obj.value, function() { callback() }, callback)
+}
+
+Level.prototype.convertEncoding = function(key, value, options) {
+  if (options.raw) return {key: key, value: value}
+  if (value) {
+    var stringed = value.toString()
+    if (stringed === 'NaN') value = 'NaN'
+  }
+  var valEnc = options.valueEncoding
+  var obj = {key: key, value: value}
+  if (value && (!valEnc || valEnc !== 'binary')) {
+    if (typeof obj.value !== 'object') {
+      obj.value = stringed
+    }
+  }
+  return obj
+}
+
+Level.prototype.iterator = function (options) {
+  if (typeof options !== 'object') options = {}
+  return new Iterator(this.idb, options)
+}
+
+Level.prototype._batch = function (array, options, callback) {
+  var op
+  var i
+  var k
+  var copiedOp
+  var currentOp
+  var modified = []
+  
+  if (array.length === 0) return setTimeout(callback, 0)
+  
+  for (i = 0; i < array.length; i++) {
+    copiedOp = {}
+    currentOp = array[i]
+    modified[i] = copiedOp
+    
+    var converted = this.convertEncoding(currentOp.key, currentOp.value, options)
+    currentOp.key = converted.key
+    currentOp.value = converted.value
+
+    for (k in currentOp) {
+      if (k === 'type' && currentOp[k] == 'del') {
+        copiedOp[k] = 'remove'
+      } else {
+        copiedOp[k] = currentOp[k]
+      }
+    }
+  }
+
+  return this.idb.batch(modified, function(){ callback() }, callback)
+}
+
+Level.prototype._close = function (callback) {
+  this.idb.db.close()
+  callback()
+}
+
+Level.prototype._approximateSize = function (start, end, callback) {
+  var err = new Error('Not implemented')
+  if (callback)
+    return callback(err)
+
+  throw err
+}
+
+Level.prototype._isBuffer = function (obj) {
+  return Buffer.isBuffer(obj)
+}
+
+Level.destroy = function (db, callback) {
+  if (typeof db === 'object') {
+    var prefix = db.IDBOptions.storePrefix || 'IDBWrapper-'
+    var dbname = db.location
+  } else {
+    var prefix = 'IDBWrapper-'
+    var dbname = db
+  }
+  var request = indexedDB.deleteDatabase(prefix + dbname)
+  request.onsuccess = function() {
+    callback()
+  }
+  request.onerror = function(err) {
+    callback(err)
+  }
+}
+
+var checkKeyValue = Level.prototype._checkKeyValue = function (obj, type) {
+  if (obj === null || obj === undefined)
+    return new Error(type + ' cannot be `null` or `undefined`')
+  if (obj === null || obj === undefined)
+    return new Error(type + ' cannot be `null` or `undefined`')
+  if (isBuffer(obj) && obj.byteLength === 0)
+    return new Error(type + ' cannot be an empty ArrayBuffer')
+  if (String(obj) === '')
+    return new Error(type + ' cannot be an empty String')
+  if (obj.length === 0)
+    return new Error(type + ' cannot be an empty Array')
 }
 
 }).call(this,require("buffer").Buffer)
-},{"buffer":3}],51:[function(require,module,exports){
-module.exports = hasKeys
+},{"./iterator":68,"abstract-leveldown":43,"buffer":3,"idb-wrapper":57,"isbuffer":60,"typedarray-to-buffer":89,"util":30,"xtend":91}],68:[function(require,module,exports){
+var util = require('util')
+var AbstractIterator  = require('abstract-leveldown').AbstractIterator
+var ltgt = require('ltgt')
 
-function hasKeys(source) {
-    return source !== null &&
-        (typeof source === "object" ||
-        typeof source === "function")
+module.exports = Iterator
+
+function Iterator (db, options) {
+  if (!options) options = {}
+  this.options = options
+  AbstractIterator.call(this, db)
+  this._order = options.reverse ? 'DESC': 'ASC'
+  this._limit = options.limit
+  this._count = 0
+  this._done  = false
+  var lower = ltgt.lowerBound(options)
+  var upper = ltgt.upperBound(options)
+  try {
+    this._keyRange = lower || upper ? this.db.makeKeyRange({
+      lower: lower,
+      upper: upper,
+      excludeLower: ltgt.lowerBoundExclusive(options),
+      excludeUpper: ltgt.upperBoundExclusive(options)
+    }) : null
+  } catch (e) {
+    // The lower key is greater than the upper key.
+    // IndexedDB throws an error, but we'll just return 0 results.
+    this._keyRangeError = true
+  }
+  this.callback = null
 }
 
-},{}],52:[function(require,module,exports){
-var Keys = require("object-keys")
-var hasKeys = require("./has-keys")
+util.inherits(Iterator, AbstractIterator)
 
-module.exports = extend
+Iterator.prototype.createIterator = function() {
+  var self = this
 
-function extend() {
-    var target = {}
-
-    for (var i = 0; i < arguments.length; i++) {
-        var source = arguments[i]
-
-        if (!hasKeys(source)) {
-            continue
-        }
-
-        var keys = Keys(source)
-
-        for (var j = 0; j < keys.length; j++) {
-            var name = keys[j]
-            target[name] = source[name]
-        }
-    }
-
-    return target
+  self.iterator = self.db.iterate(function () {
+    self.onItem.apply(self, arguments)
+  }, {
+    keyRange: self._keyRange,
+    autoContinue: false,
+    order: self._order,
+    onError: function(err) { console.log('horrible error', err) },
+  })
 }
 
-},{"./has-keys":51,"object-keys":54}],53:[function(require,module,exports){
-var hasOwn = Object.prototype.hasOwnProperty;
-var toString = Object.prototype.toString;
+// TODO the limit implementation here just ignores all reads after limit has been reached
+// it should cancel the iterator instead but I don't know how
+Iterator.prototype.onItem = function (value, cursor, cursorTransaction) {
+  if (!cursor && this.callback) {
+    this.callback()
+    this.callback = false
+    return
+  }
+  var shouldCall = true
 
-var isFunction = function (fn) {
-	var isFunc = (typeof fn === 'function' && !(fn instanceof RegExp)) || toString.call(fn) === '[object Function]';
-	if (!isFunc && typeof window !== 'undefined') {
-		isFunc = fn === window.setTimeout || fn === window.alert || fn === window.confirm || fn === window.prompt;
-	}
-	return isFunc;
-};
+  if (!!this._limit && this._limit > 0 && this._count++ >= this._limit)
+    shouldCall = false
 
-module.exports = function forEach(obj, fn) {
-	if (!isFunction(fn)) {
-		throw new TypeError('iterator must be a function');
-	}
-	var i, k,
-		isString = typeof obj === 'string',
-		l = obj.length,
-		context = arguments.length > 2 ? arguments[2] : null;
-	if (l === +l) {
-		for (i = 0; i < l; i++) {
-			if (context === null) {
-				fn(isString ? obj.charAt(i) : obj[i], i, obj);
-			} else {
-				fn.call(context, isString ? obj.charAt(i) : obj[i], i, obj);
-			}
-		}
-	} else {
-		for (k in obj) {
-			if (hasOwn.call(obj, k)) {
-				if (context === null) {
-					fn(obj[k], k, obj);
-				} else {
-					fn.call(context, obj[k], k, obj);
-				}
-			}
-		}
-	}
-};
+  if (shouldCall) this.callback(false, cursor.key, cursor.value)
+  if (cursor) cursor['continue']()
+}
 
+Iterator.prototype._next = function (callback) {
+  if (!callback) return new Error('next() requires a callback argument')
+  if (this._keyRangeError) return callback()
+  if (!this._started) {
+    this.createIterator()
+    this._started = true
+  }
+  this.callback = callback
+}
 
-},{}],54:[function(require,module,exports){
-module.exports = Object.keys || require('./shim');
-
-
-},{"./shim":56}],55:[function(require,module,exports){
-var toString = Object.prototype.toString;
-
-module.exports = function isArguments(value) {
-	var str = toString.call(value);
-	var isArguments = str === '[object Arguments]';
-	if (!isArguments) {
-		isArguments = str !== '[object Array]'
-			&& value !== null
-			&& typeof value === 'object'
-			&& typeof value.length === 'number'
-			&& value.length >= 0
-			&& toString.call(value.callee) === '[object Function]';
-	}
-	return isArguments;
-};
-
-
-},{}],56:[function(require,module,exports){
-(function () {
-	"use strict";
-
-	// modified from https://github.com/kriskowal/es5-shim
-	var has = Object.prototype.hasOwnProperty,
-		toString = Object.prototype.toString,
-		forEach = require('./foreach'),
-		isArgs = require('./isArguments'),
-		hasDontEnumBug = !({'toString': null}).propertyIsEnumerable('toString'),
-		hasProtoEnumBug = (function () {}).propertyIsEnumerable('prototype'),
-		dontEnums = [
-			"toString",
-			"toLocaleString",
-			"valueOf",
-			"hasOwnProperty",
-			"isPrototypeOf",
-			"propertyIsEnumerable",
-			"constructor"
-		],
-		keysShim;
-
-	keysShim = function keys(object) {
-		var isObject = object !== null && typeof object === 'object',
-			isFunction = toString.call(object) === '[object Function]',
-			isArguments = isArgs(object),
-			theKeys = [];
-
-		if (!isObject && !isFunction && !isArguments) {
-			throw new TypeError("Object.keys called on a non-object");
-		}
-
-		if (isArguments) {
-			forEach(object, function (value) {
-				theKeys.push(value);
-			});
-		} else {
-			var name,
-				skipProto = hasProtoEnumBug && isFunction;
-
-			for (name in object) {
-				if (!(skipProto && name === 'prototype') && has.call(object, name)) {
-					theKeys.push(name);
-				}
-			}
-		}
-
-		if (hasDontEnumBug) {
-			var ctor = object.constructor,
-				skipConstructor = ctor && ctor.prototype === object;
-
-			forEach(dontEnums, function (dontEnum) {
-				if (!(skipConstructor && dontEnum === 'constructor') && has.call(object, dontEnum)) {
-					theKeys.push(dontEnum);
-				}
-			});
-		}
-		return theKeys;
-	};
-
-	module.exports = keysShim;
-}());
-
-
-},{"./foreach":53,"./isArguments":55}],57:[function(require,module,exports){
+},{"abstract-leveldown":43,"ltgt":75,"util":30}],69:[function(require,module,exports){
 const levelup = require('levelup')
 
 function packager (leveldown) {
@@ -8907,7 +10139,7 @@ function packager (leveldown) {
 
 module.exports = packager
 
-},{"levelup":59}],58:[function(require,module,exports){
+},{"levelup":71}],70:[function(require,module,exports){
 /* Copyright (c) 2012-2016 LevelUP contributors
  * See list at <https://github.com/level/levelup#contributing>
  * MIT License
@@ -8992,7 +10224,7 @@ Batch.prototype.write = function (callback) {
 
 module.exports = Batch
 
-},{"./util":60,"level-errors":70}],59:[function(require,module,exports){
+},{"./util":72,"level-errors":64}],71:[function(require,module,exports){
 (function (process){
 /* Copyright (c) 2012-2016 LevelUP contributors
  * See list at <https://github.com/level/levelup#contributing>
@@ -9395,7 +10627,7 @@ module.exports.repair  = deprecate(
 
 
 }).call(this,require('_process'))
-},{"./batch":58,"./util":60,"_process":11,"deferred-leveldown":62,"events":7,"level-codec":68,"level-errors":70,"level-iterator-stream":74,"prr":85,"util":30,"xtend":86}],60:[function(require,module,exports){
+},{"./batch":70,"./util":72,"_process":11,"deferred-leveldown":47,"events":7,"level-codec":62,"level-errors":64,"level-iterator-stream":65,"prr":81,"util":30,"xtend":73}],72:[function(require,module,exports){
 /* Copyright (c) 2012-2016 LevelUP contributors
  * See list at <https://github.com/level/levelup#contributing>
  * MIT License
@@ -9474,1194 +10706,589 @@ module.exports = {
   , isDefined       : isDefined
 }
 
-},{"../package.json":87,"level-errors":70,"leveldown":2,"leveldown/package":2,"semver":2,"util":30,"xtend":86}],61:[function(require,module,exports){
-var util = require('util')
-  , AbstractIterator = require('abstract-leveldown').AbstractIterator
-
-
-function DeferredIterator (options) {
-  AbstractIterator.call(this, options)
-
-  this._options = options
-  this._iterator = null
-  this._operations = []
-}
-
-util.inherits(DeferredIterator, AbstractIterator)
-
-DeferredIterator.prototype.setDb = function (db) {
-  var it = this._iterator = db.iterator(this._options)
-  this._operations.forEach(function (op) {
-    it[op.method].apply(it, op.args)
-  })
-}
-
-DeferredIterator.prototype._operation = function (method, args) {
-  if (this._iterator)
-    return this._iterator[method].apply(this._iterator, args)
-  this._operations.push({ method: method, args: args })
-}
-
-'next end'.split(' ').forEach(function (m) {
-  DeferredIterator.prototype['_' + m] = function () {
-    this._operation(m, arguments)
-  }
-})
-
-module.exports = DeferredIterator;
-
-},{"abstract-leveldown":66,"util":30}],62:[function(require,module,exports){
-(function (Buffer,process){
-var util              = require('util')
-  , AbstractLevelDOWN = require('abstract-leveldown').AbstractLevelDOWN
-  , DeferredIterator  = require('./deferred-iterator')
-
-function DeferredLevelDOWN (location) {
-  AbstractLevelDOWN.call(this, typeof location == 'string' ? location : '') // optional location, who cares?
-  this._db         = undefined
-  this._operations = []
-  this._iterators  = []
-}
-
-util.inherits(DeferredLevelDOWN, AbstractLevelDOWN)
-
-// called by LevelUP when we have a real DB to take its place
-DeferredLevelDOWN.prototype.setDb = function (db) {
-  this._db = db
-  this._operations.forEach(function (op) {
-    db[op.method].apply(db, op.args)
-  })
-  this._iterators.forEach(function (it) {
-    it.setDb(db)
-  })
-}
-
-DeferredLevelDOWN.prototype._open = function (options, callback) {
-  return process.nextTick(callback)
-}
-
-// queue a new deferred operation
-DeferredLevelDOWN.prototype._operation = function (method, args) {
-  if (this._db)
-    return this._db[method].apply(this._db, args)
-  this._operations.push({ method: method, args: args })
-}
-
-// deferrables
-'put get del batch approximateSize'.split(' ').forEach(function (m) {
-  DeferredLevelDOWN.prototype['_' + m] = function () {
-    this._operation(m, arguments)
-  }
-})
-
-DeferredLevelDOWN.prototype._isBuffer = function (obj) {
-  return Buffer.isBuffer(obj)
-}
-
-DeferredLevelDOWN.prototype._iterator = function (options) {
-  if (this._db)
-    return this._db.iterator.apply(this._db, arguments)
-  var it = new DeferredIterator(options)
-  this._iterators.push(it)
-  return it
-}
-
-module.exports                  = DeferredLevelDOWN
-module.exports.DeferredIterator = DeferredIterator
-
-}).call(this,{"isBuffer":require("../../../../../../../../../allex-toolbox-dev/node_modules/browserify/node_modules/insert-module-globals/node_modules/is-buffer/index.js")},require('_process'))
-},{"../../../../../../../../../allex-toolbox-dev/node_modules/browserify/node_modules/insert-module-globals/node_modules/is-buffer/index.js":9,"./deferred-iterator":61,"_process":11,"abstract-leveldown":66,"util":30}],63:[function(require,module,exports){
-(function (process){
-/* Copyright (c) 2013 Rod Vagg, MIT License */
-
-function AbstractChainedBatch (db) {
-  this._db         = db
-  this._operations = []
-  this._written    = false
-}
-
-AbstractChainedBatch.prototype._checkWritten = function () {
-  if (this._written)
-    throw new Error('write() already called on this batch')
-}
-
-AbstractChainedBatch.prototype.put = function (key, value) {
-  this._checkWritten()
-
-  var err = this._db._checkKey(key, 'key', this._db._isBuffer)
-  if (err)
-    throw err
-
-  if (!this._db._isBuffer(key)) key = String(key)
-  if (!this._db._isBuffer(value)) value = String(value)
-
-  if (typeof this._put == 'function' )
-    this._put(key, value)
-  else
-    this._operations.push({ type: 'put', key: key, value: value })
-
-  return this
-}
-
-AbstractChainedBatch.prototype.del = function (key) {
-  this._checkWritten()
-
-  var err = this._db._checkKey(key, 'key', this._db._isBuffer)
-  if (err) throw err
-
-  if (!this._db._isBuffer(key)) key = String(key)
-
-  if (typeof this._del == 'function' )
-    this._del(key)
-  else
-    this._operations.push({ type: 'del', key: key })
-
-  return this
-}
-
-AbstractChainedBatch.prototype.clear = function () {
-  this._checkWritten()
-
-  this._operations = []
-
-  if (typeof this._clear == 'function' )
-    this._clear()
-
-  return this
-}
-
-AbstractChainedBatch.prototype.write = function (options, callback) {
-  this._checkWritten()
-
-  if (typeof options == 'function')
-    callback = options
-  if (typeof callback != 'function')
-    throw new Error('write() requires a callback argument')
-  if (typeof options != 'object')
-    options = {}
-
-  this._written = true
-
-  if (typeof this._write == 'function' )
-    return this._write(callback)
-
-  if (typeof this._db._batch == 'function')
-    return this._db._batch(this._operations, options, callback)
-
-  process.nextTick(callback)
-}
-
-module.exports = AbstractChainedBatch
-}).call(this,require('_process'))
-},{"_process":11}],64:[function(require,module,exports){
-arguments[4][44][0].apply(exports,arguments)
-},{"_process":11,"dup":44}],65:[function(require,module,exports){
-(function (Buffer,process){
-/* Copyright (c) 2013 Rod Vagg, MIT License */
-
-var xtend                = require('xtend')
-  , AbstractIterator     = require('./abstract-iterator')
-  , AbstractChainedBatch = require('./abstract-chained-batch')
-
-function AbstractLevelDOWN (location) {
-  if (!arguments.length || location === undefined)
-    throw new Error('constructor requires at least a location argument')
-
-  if (typeof location != 'string')
-    throw new Error('constructor requires a location string argument')
-
-  this.location = location
-  this.status = 'new'
-}
-
-AbstractLevelDOWN.prototype.open = function (options, callback) {
-  var self      = this
-    , oldStatus = this.status
-
-  if (typeof options == 'function')
-    callback = options
-
-  if (typeof callback != 'function')
-    throw new Error('open() requires a callback argument')
-
-  if (typeof options != 'object')
-    options = {}
-
-  options.createIfMissing = options.createIfMissing != false
-  options.errorIfExists = !!options.errorIfExists
-
-  if (typeof this._open == 'function') {
-    this.status = 'opening'
-    this._open(options, function (err) {
-      if (err) {
-        self.status = oldStatus
-        return callback(err)
-      }
-      self.status = 'open'
-      callback()
-    })
-  } else {
-    this.status = 'open'
-    process.nextTick(callback)
-  }
-}
-
-AbstractLevelDOWN.prototype.close = function (callback) {
-  var self      = this
-    , oldStatus = this.status
-
-  if (typeof callback != 'function')
-    throw new Error('close() requires a callback argument')
-
-  if (typeof this._close == 'function') {
-    this.status = 'closing'
-    this._close(function (err) {
-      if (err) {
-        self.status = oldStatus
-        return callback(err)
-      }
-      self.status = 'closed'
-      callback()
-    })
-  } else {
-    this.status = 'closed'
-    process.nextTick(callback)
-  }
-}
-
-AbstractLevelDOWN.prototype.get = function (key, options, callback) {
-  var err
-
-  if (typeof options == 'function')
-    callback = options
-
-  if (typeof callback != 'function')
-    throw new Error('get() requires a callback argument')
-
-  if (err = this._checkKey(key, 'key', this._isBuffer))
-    return callback(err)
-
-  if (!this._isBuffer(key))
-    key = String(key)
-
-  if (typeof options != 'object')
-    options = {}
-
-  options.asBuffer = options.asBuffer != false
-
-  if (typeof this._get == 'function')
-    return this._get(key, options, callback)
-
-  process.nextTick(function () { callback(new Error('NotFound')) })
-}
-
-AbstractLevelDOWN.prototype.put = function (key, value, options, callback) {
-  var err
-
-  if (typeof options == 'function')
-    callback = options
-
-  if (typeof callback != 'function')
-    throw new Error('put() requires a callback argument')
-
-  if (err = this._checkKey(key, 'key', this._isBuffer))
-    return callback(err)
-
-  if (!this._isBuffer(key))
-    key = String(key)
-
-  // coerce value to string in node, don't touch it in browser
-  // (indexeddb can store any JS type)
-  if (value != null && !this._isBuffer(value) && !process.browser)
-    value = String(value)
-
-  if (typeof options != 'object')
-    options = {}
-
-  if (typeof this._put == 'function')
-    return this._put(key, value, options, callback)
-
-  process.nextTick(callback)
-}
-
-AbstractLevelDOWN.prototype.del = function (key, options, callback) {
-  var err
-
-  if (typeof options == 'function')
-    callback = options
-
-  if (typeof callback != 'function')
-    throw new Error('del() requires a callback argument')
-
-  if (err = this._checkKey(key, 'key', this._isBuffer))
-    return callback(err)
-
-  if (!this._isBuffer(key))
-    key = String(key)
-
-  if (typeof options != 'object')
-    options = {}
-
-  if (typeof this._del == 'function')
-    return this._del(key, options, callback)
-
-  process.nextTick(callback)
-}
-
-AbstractLevelDOWN.prototype.batch = function (array, options, callback) {
-  if (!arguments.length)
-    return this._chainedBatch()
-
-  if (typeof options == 'function')
-    callback = options
-
-  if (typeof array == 'function')
-    callback = array
-
-  if (typeof callback != 'function')
-    throw new Error('batch(array) requires a callback argument')
-
-  if (!Array.isArray(array))
-    return callback(new Error('batch(array) requires an array argument'))
-
-  if (!options || typeof options != 'object')
-    options = {}
-
-  var i = 0
-    , l = array.length
-    , e
-    , err
-
-  for (; i < l; i++) {
-    e = array[i]
-    if (typeof e != 'object')
-      continue
-
-    if (err = this._checkKey(e.type, 'type', this._isBuffer))
-      return callback(err)
-
-    if (err = this._checkKey(e.key, 'key', this._isBuffer))
-      return callback(err)
-  }
-
-  if (typeof this._batch == 'function')
-    return this._batch(array, options, callback)
-
-  process.nextTick(callback)
-}
-
-//TODO: remove from here, not a necessary primitive
-AbstractLevelDOWN.prototype.approximateSize = function (start, end, callback) {
-  if (   start == null
-      || end == null
-      || typeof start == 'function'
-      || typeof end == 'function') {
-    throw new Error('approximateSize() requires valid `start`, `end` and `callback` arguments')
-  }
-
-  if (typeof callback != 'function')
-    throw new Error('approximateSize() requires a callback argument')
-
-  if (!this._isBuffer(start))
-    start = String(start)
-
-  if (!this._isBuffer(end))
-    end = String(end)
-
-  if (typeof this._approximateSize == 'function')
-    return this._approximateSize(start, end, callback)
-
-  process.nextTick(function () {
-    callback(null, 0)
-  })
-}
-
-AbstractLevelDOWN.prototype._setupIteratorOptions = function (options) {
-  var self = this
-
-  options = xtend(options)
-
-  ;[ 'start', 'end', 'gt', 'gte', 'lt', 'lte' ].forEach(function (o) {
-    if (options[o] && self._isBuffer(options[o]) && options[o].length === 0)
-      delete options[o]
-  })
-
-  options.reverse = !!options.reverse
-  options.keys = options.keys != false
-  options.values = options.values != false
-  options.limit = 'limit' in options ? options.limit : -1
-  options.keyAsBuffer = options.keyAsBuffer != false
-  options.valueAsBuffer = options.valueAsBuffer != false
-
-  return options
-}
-
-AbstractLevelDOWN.prototype.iterator = function (options) {
-  if (typeof options != 'object')
-    options = {}
-
-  options = this._setupIteratorOptions(options)
-
-  if (typeof this._iterator == 'function')
-    return this._iterator(options)
-
-  return new AbstractIterator(this)
-}
-
-AbstractLevelDOWN.prototype._chainedBatch = function () {
-  return new AbstractChainedBatch(this)
-}
-
-AbstractLevelDOWN.prototype._isBuffer = function (obj) {
-  return Buffer.isBuffer(obj)
-}
-
-AbstractLevelDOWN.prototype._checkKey = function (obj, type) {
-
-  if (obj === null || obj === undefined)
-    return new Error(type + ' cannot be `null` or `undefined`')
-
-  if (this._isBuffer(obj)) {
-    if (obj.length === 0)
-      return new Error(type + ' cannot be an empty Buffer')
-  } else if (String(obj) === '')
-    return new Error(type + ' cannot be an empty String')
-}
-
-module.exports = AbstractLevelDOWN
-
-}).call(this,{"isBuffer":require("../../../../../../../../../../../allex-toolbox-dev/node_modules/browserify/node_modules/insert-module-globals/node_modules/is-buffer/index.js")},require('_process'))
-},{"../../../../../../../../../../../allex-toolbox-dev/node_modules/browserify/node_modules/insert-module-globals/node_modules/is-buffer/index.js":9,"./abstract-chained-batch":63,"./abstract-iterator":64,"_process":11,"xtend":86}],66:[function(require,module,exports){
-exports.AbstractLevelDOWN    = require('./abstract-leveldown')
-exports.AbstractIterator     = require('./abstract-iterator')
-exports.AbstractChainedBatch = require('./abstract-chained-batch')
-exports.isLevelDOWN          = require('./is-leveldown')
-
-},{"./abstract-chained-batch":63,"./abstract-iterator":64,"./abstract-leveldown":65,"./is-leveldown":67}],67:[function(require,module,exports){
-var AbstractLevelDOWN = require('./abstract-leveldown')
-
-function isLevelDOWN (db) {
-  if (!db || typeof db !== 'object')
-    return false
-  return Object.keys(AbstractLevelDOWN.prototype).filter(function (name) {
-    // TODO remove approximateSize check when method is gone
-    return name[0] != '_' && name != 'approximateSize'
-  }).every(function (name) {
-    return typeof db[name] == 'function'
-  })
-}
-
-module.exports = isLevelDOWN
-
-},{"./abstract-leveldown":65}],68:[function(require,module,exports){
-var encodings = require('./lib/encodings');
-
-module.exports = Codec;
-
-function Codec(opts){
-  this.opts = opts || {};
-  this.encodings = encodings;
-}
-
-Codec.prototype._encoding = function(encoding){
-  if (typeof encoding == 'string') encoding = encodings[encoding];
-  if (!encoding) encoding = encodings.id;
-  return encoding;
-};
-
-Codec.prototype._keyEncoding = function(opts, batchOpts){
-  return this._encoding(batchOpts && batchOpts.keyEncoding
-    || opts && opts.keyEncoding
-    || this.opts.keyEncoding);
-};
-
-Codec.prototype._valueEncoding = function(opts, batchOpts){
-  return this._encoding(
-    batchOpts && (batchOpts.valueEncoding || batchOpts.encoding)
-    || opts && (opts.valueEncoding || opts.encoding)
-    || (this.opts.valueEncoding || this.opts.encoding));
-};
-
-Codec.prototype.encodeKey = function(key, opts, batchOpts){
-  return this._keyEncoding(opts, batchOpts).encode(key);
-};
-
-Codec.prototype.encodeValue = function(value, opts, batchOpts){
-  return this._valueEncoding(opts, batchOpts).encode(value);
-};
-
-Codec.prototype.decodeKey = function(key, opts){
-  return this._keyEncoding(opts).decode(key);
-};
-
-Codec.prototype.decodeValue = function(value, opts){
-  return this._valueEncoding(opts).decode(value);
-};
-
-Codec.prototype.encodeBatch = function(ops, opts){
-  var self = this;
-
-  return ops.map(function(_op){
-    var op = {
-      type: _op.type,
-      key: self.encodeKey(_op.key, opts, _op)
-    };
-    if (self.keyAsBuffer(opts, _op)) op.keyEncoding = 'binary';
-    if (_op.prefix) op.prefix = _op.prefix;
-    if ('value' in _op) {
-      op.value = self.encodeValue(_op.value, opts, _op);
-      if (self.valueAsBuffer(opts, _op)) op.valueEncoding = 'binary';
+},{"../package.json":74,"level-errors":64,"leveldown":2,"leveldown/package":2,"semver":2,"util":30,"xtend":73}],73:[function(require,module,exports){
+arguments[4][53][0].apply(exports,arguments)
+},{"dup":53}],74:[function(require,module,exports){
+module.exports={
+  "_args": [
+    [
+      {
+        "raw": "levelup@~1.3.0",
+        "scope": null,
+        "escapedName": "levelup",
+        "name": "levelup",
+        "rawSpec": "~1.3.0",
+        "spec": ">=1.3.0 <1.4.0",
+        "type": "range"
+      },
+      "/home/andra/lib/node_modules/allex_leveldblib-dev/node_modules/level-packager"
+    ]
+  ],
+  "_from": "levelup@>=1.3.0 <1.4.0",
+  "_id": "levelup@1.3.2",
+  "_inCache": true,
+  "_installable": true,
+  "_location": "/levelup",
+  "_nodeVersion": "6.1.0",
+  "_npmOperationalInternal": {
+    "host": "packages-16-east.internal.npmjs.com",
+    "tmp": "tmp/levelup-1.3.2.tgz_1463496525467_0.4644940535072237"
+  },
+  "_npmUser": {
+    "name": "ralphtheninja",
+    "email": "ralphtheninja@riseup.net"
+  },
+  "_npmVersion": "3.8.6",
+  "_phantomChildren": {},
+  "_requested": {
+    "raw": "levelup@~1.3.0",
+    "scope": null,
+    "escapedName": "levelup",
+    "name": "levelup",
+    "rawSpec": "~1.3.0",
+    "spec": ">=1.3.0 <1.4.0",
+    "type": "range"
+  },
+  "_requiredBy": [
+    "/level-packager"
+  ],
+  "_resolved": "https://registry.npmjs.org/levelup/-/levelup-1.3.2.tgz",
+  "_shasum": "b321d3071f0e75c2dfaf2f0fe8864e5b9a387bc9",
+  "_shrinkwrap": null,
+  "_spec": "levelup@~1.3.0",
+  "_where": "/home/andra/lib/node_modules/allex_leveldblib-dev/node_modules/level-packager",
+  "browser": {
+    "leveldown": false,
+    "leveldown/package": false,
+    "semver": false
+  },
+  "bugs": {
+    "url": "https://github.com/level/levelup/issues"
+  },
+  "contributors": [
+    {
+      "name": "Rod Vagg",
+      "email": "r@va.gg",
+      "url": "https://github.com/rvagg"
+    },
+    {
+      "name": "John Chesley",
+      "email": "john@chesl.es",
+      "url": "https://github.com/chesles/"
+    },
+    {
+      "name": "Jake Verbaten",
+      "email": "raynos2@gmail.com",
+      "url": "https://github.com/raynos"
+    },
+    {
+      "name": "Dominic Tarr",
+      "email": "dominic.tarr@gmail.com",
+      "url": "https://github.com/dominictarr"
+    },
+    {
+      "name": "Max Ogden",
+      "email": "max@maxogden.com",
+      "url": "https://github.com/maxogden"
+    },
+    {
+      "name": "Lars-Magnus Skog",
+      "email": "ralphtheninja@riseup.net",
+      "url": "https://github.com/ralphtheninja"
+    },
+    {
+      "name": "David Björklund",
+      "email": "david.bjorklund@gmail.com",
+      "url": "https://github.com/kesla"
+    },
+    {
+      "name": "Julian Gruber",
+      "email": "julian@juliangruber.com",
+      "url": "https://github.com/juliangruber"
+    },
+    {
+      "name": "Paolo Fragomeni",
+      "email": "paolo@async.ly",
+      "url": "https://github.com/0x00a"
+    },
+    {
+      "name": "Anton Whalley",
+      "email": "anton.whalley@nearform.com",
+      "url": "https://github.com/No9"
+    },
+    {
+      "name": "Matteo Collina",
+      "email": "matteo.collina@gmail.com",
+      "url": "https://github.com/mcollina"
+    },
+    {
+      "name": "Pedro Teixeira",
+      "email": "pedro.teixeira@gmail.com",
+      "url": "https://github.com/pgte"
+    },
+    {
+      "name": "James Halliday",
+      "email": "mail@substack.net",
+      "url": "https://github.com/substack"
+    },
+    {
+      "name": "Jarrett Cruger",
+      "email": "jcrugzz@gmail.com",
+      "url": "https://github.com/jcrugzz"
     }
-    return op;
-  });
-};
-
-var ltgtKeys = ['lt', 'gt', 'lte', 'gte', 'start', 'end'];
-
-Codec.prototype.encodeLtgt = function(ltgt){
-  var self = this;
-  var ret = {};
-  Object.keys(ltgt).forEach(function(key){
-    ret[key] = ltgtKeys.indexOf(key) > -1
-      ? self.encodeKey(ltgt[key], ltgt)
-      : ltgt[key]
-  });
-  return ret;
-};
-
-Codec.prototype.createStreamDecoder = function(opts){
-  var self = this;
-
-  if (opts.keys && opts.values) {
-    return function(key, value){
-      return {
-        key: self.decodeKey(key, opts),
-        value: self.decodeValue(value, opts)
-      };
-    };
-  } else if (opts.keys) {
-    return function(key) {
-      return self.decodeKey(key, opts);
-    }; 
-  } else if (opts.values) {
-    return function(_, value){
-      return self.decodeValue(value, opts);
+  ],
+  "dependencies": {
+    "deferred-leveldown": "~1.2.1",
+    "level-codec": "~6.1.0",
+    "level-errors": "~1.0.3",
+    "level-iterator-stream": "~1.3.0",
+    "prr": "~1.0.1",
+    "semver": "~5.1.0",
+    "xtend": "~4.0.0"
+  },
+  "description": "Fast & simple storage - a Node.js-style LevelDB wrapper",
+  "devDependencies": {
+    "async": "~1.5.0",
+    "bustermove": "~1.0.0",
+    "delayed": "~1.0.1",
+    "faucet": "~0.0.1",
+    "leveldown": "^1.1.0",
+    "memdown": "~1.1.0",
+    "msgpack-js": "~0.3.0",
+    "referee": "~1.2.0",
+    "rimraf": "~2.4.3",
+    "slow-stream": "0.0.4",
+    "tap": "~2.3.1",
+    "tape": "~4.2.1"
+  },
+  "directories": {},
+  "dist": {
+    "shasum": "b321d3071f0e75c2dfaf2f0fe8864e5b9a387bc9",
+    "tarball": "https://registry.npmjs.org/levelup/-/levelup-1.3.2.tgz"
+  },
+  "gitHead": "bcc242cfc4ec035f9228a5cd54903cb126659a00",
+  "homepage": "https://github.com/level/levelup",
+  "keywords": [
+    "leveldb",
+    "stream",
+    "database",
+    "db",
+    "store",
+    "storage",
+    "json"
+  ],
+  "license": "MIT",
+  "main": "lib/levelup.js",
+  "maintainers": [
+    {
+      "name": "rvagg",
+      "email": "rod@vagg.org"
+    },
+    {
+      "name": "ralphtheninja",
+      "email": "ralphtheninja@riseup.net"
+    },
+    {
+      "name": "juliangruber",
+      "email": "julian@juliangruber.com"
     }
-  } else {
-    return function(){};
-  }
-};
+  ],
+  "name": "levelup",
+  "optionalDependencies": {},
+  "readme": "ERROR: No README data found!",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/level/levelup.git"
+  },
+  "scripts": {
+    "test": "tape test/*-test.js | faucet"
+  },
+  "version": "1.3.2"
+}
 
-Codec.prototype.keyAsBuffer = function(opts){
-  return this._keyEncoding(opts).buffer;
-};
-
-Codec.prototype.valueAsBuffer = function(opts){
-  return this._valueEncoding(opts).buffer;
-};
-
-
-},{"./lib/encodings":69}],69:[function(require,module,exports){
+},{}],75:[function(require,module,exports){
 (function (Buffer){
 
-exports.utf8 = exports['utf-8'] = {
-  encode: function(data){
-    return isBinary(data)
-      ? data
-      : String(data);
-  },
-  decode: identity,
-  buffer: false,
-  type: 'utf8'
-};
+exports.compare = function (a, b) {
 
-exports.json = {
-  encode: JSON.stringify,
-  decode: JSON.parse,
-  buffer: false,
-  type: 'json'
-};
-
-exports.binary = {
-  encode: function(data){
-    return isBinary(data)
-      ? data
-      : new Buffer(data);      
-  },
-  decode: identity,
-  buffer: true,
-  type: 'binary'
-};
-
-exports.id = {
-  encode: function(data){
-    return data;
-  },
-  decode: function(data){
-    return data;
-  },
-  buffer: false,
-  type: 'id'
-};
-
-var bufferEncodings = [
-  'hex',
-  'ascii',
-  'base64',
-  'ucs2',
-  'ucs-2',
-  'utf16le',
-  'utf-16le'
-];
-
-bufferEncodings.forEach(function(type){
-  exports[type] = {
-    encode: function(data){
-      return isBinary(data)
-        ? data
-        : new Buffer(data, type);
-    },
-    decode: function(buffer){
-      return buffer.toString(type);
-    },
-    buffer: true,
-    type: type
-  };
-});
-
-function identity(value){
-  return value;
-}
-
-function isBinary(data){
-  return data === undefined
-    || data === null
-    || Buffer.isBuffer(data);
-}
-
-
-}).call(this,require("buffer").Buffer)
-},{"buffer":3}],70:[function(require,module,exports){
-/* Copyright (c) 2012-2015 LevelUP contributors
- * See list at <https://github.com/rvagg/node-levelup#contributing>
- * MIT License
- * <https://github.com/rvagg/node-levelup/blob/master/LICENSE.md>
- */
-
-var createError   = require('errno').create
-  , LevelUPError  = createError('LevelUPError')
-  , NotFoundError = createError('NotFoundError', LevelUPError)
-
-NotFoundError.prototype.notFound = true
-NotFoundError.prototype.status   = 404
-
-module.exports = {
-    LevelUPError        : LevelUPError
-  , InitializationError : createError('InitializationError', LevelUPError)
-  , OpenError           : createError('OpenError', LevelUPError)
-  , ReadError           : createError('ReadError', LevelUPError)
-  , WriteError          : createError('WriteError', LevelUPError)
-  , NotFoundError       : NotFoundError
-  , EncodingError       : createError('EncodingError', LevelUPError)
-}
-
-},{"errno":72}],71:[function(require,module,exports){
-var prr = require('prr')
-
-function init (type, message, cause) {
-  prr(this, {
-      type    : type
-    , name    : type
-      // can be passed just a 'cause'
-    , cause   : typeof message != 'string' ? message : cause
-    , message : !!message && typeof message != 'string' ? message.message : message
-
-  }, 'ewr')
-}
-
-// generic prototype, not intended to be actually used - helpful for `instanceof`
-function CustomError (message, cause) {
-  Error.call(this)
-  if (Error.captureStackTrace)
-    Error.captureStackTrace(this, arguments.callee)
-  init.call(this, 'CustomError', message, cause)
-}
-
-CustomError.prototype = new Error()
-
-function createError (errno, type, proto) {
-  var err = function (message, cause) {
-    init.call(this, type, message, cause)
-    //TODO: the specificity here is stupid, errno should be available everywhere
-    if (type == 'FilesystemError') {
-      this.code    = this.cause.code
-      this.path    = this.cause.path
-      this.errno   = this.cause.errno
-      this.message =
-        (errno.errno[this.cause.errno]
-          ? errno.errno[this.cause.errno].description
-          : this.cause.message)
-        + (this.cause.path ? ' [' + this.cause.path + ']' : '')
+  if(Buffer.isBuffer(a)) {
+    var l = Math.min(a.length, b.length)
+    for(var i = 0; i < l; i++) {
+      var cmp = a[i] - b[i]
+      if(cmp) return cmp
     }
-    Error.call(this)
-    if (Error.captureStackTrace)
-      Error.captureStackTrace(this, arguments.callee)
+    return a.length - b.length
   }
-  err.prototype = !!proto ? new proto() : new CustomError()
-  return err
+
+  return a < b ? -1 : a > b ? 1 : 0
 }
 
-module.exports = function (errno) {
-  var ce = function (type, proto) {
-    return createError(errno, type, proto)
+function has(obj, key) {
+  return Object.hasOwnProperty.call(obj, key)
+}
+
+// to be compatible with the current abstract-leveldown tests
+// nullish or empty strings.
+// I could use !!val but I want to permit numbers and booleans,
+// if possible.
+
+function isDef (val) {
+  return val !== undefined && val !== ''
+}
+
+function has (range, name) {
+  return Object.hasOwnProperty.call(range, name)
+}
+
+function hasKey(range, name) {
+  return Object.hasOwnProperty.call(range, name) && name
+}
+
+var lowerBoundKey = exports.lowerBoundKey = function (range) {
+    return (
+       hasKey(range, 'gt')
+    || hasKey(range, 'gte')
+    || hasKey(range, 'min')
+    || (range.reverse ? hasKey(range, 'end') : hasKey(range, 'start'))
+    || undefined
+    )
+}
+
+var lowerBound = exports.lowerBound = function (range) {
+  var k = lowerBoundKey(range)
+  return k && range[k]
+}
+
+exports.lowerBoundInclusive = function (range) {
+  return has(range, 'gt') ? false : true
+}
+
+exports.upperBoundInclusive =
+  function (range) {
+    return has(range, 'lt') || !range.minEx ? false : true
   }
-  return {
-      CustomError     : CustomError
-    , FilesystemError : ce('FilesystemError')
-    , createError     : ce
+
+var lowerBoundExclusive = exports.lowerBoundExclusive =
+  function (range) {
+    return has(range, 'gt') || range.minEx ? true : false
+  }
+
+var upperBoundExclusive = exports.upperBoundExclusive =
+  function (range) {
+    return has(range, 'lt') ? true : false
+  }
+
+var upperBoundKey = exports.upperBoundKey = function (range) {
+    return (
+       hasKey(range, 'lt')
+    || hasKey(range, 'lte')
+    || hasKey(range, 'max')
+    || (range.reverse ? hasKey(range, 'start') : hasKey(range, 'end'))
+    || undefined
+    )
+}
+
+var upperBound = exports.upperBound = function (range) {
+  var k = upperBoundKey(range)
+  return k && range[k]
+}
+
+function id (e) { return e }
+
+exports.toLtgt = function (range, _range, map, lower, upper) {
+  _range = _range || {}
+  map = map || id
+  var defaults = arguments.length > 3
+  var lb = exports.lowerBoundKey(range)
+  var ub = exports.upperBoundKey(range)
+  if(lb) {
+    if(lb === 'gt') _range.gt = map(range.gt, false)
+    else            _range.gte = map(range[lb], false)
+  }
+  else if(defaults)
+    _range.gte = map(lower, false)
+
+  if(ub) {
+    if(ub === 'lt') _range.lt = map(range.lt, true)
+    else            _range.lte = map(range[ub], true)
+  }
+  else if(defaults)
+    _range.lte = map(upper, true)
+
+  if(range.reverse != null)
+    _range.reverse = !!range.reverse
+
+  //if range was used mutably
+  //(in level-sublevel it's part of an options object
+  //that has more properties on it.)
+  if(has(_range, 'max'))   delete _range.max
+  if(has(_range, 'min'))   delete _range.min
+  if(has(_range, 'start')) delete _range.start
+  if(has(_range, 'end'))   delete _range.end
+
+  return _range
+}
+
+exports.contains = function (range, key, compare) {
+  compare = compare || exports.compare
+
+  var lb = lowerBound(range)
+  if(isDef(lb)) {
+    var cmp = compare(key, lb)
+    if(cmp < 0 || (cmp === 0 && lowerBoundExclusive(range)))
+      return false
+  }
+
+  var ub = upperBound(range)
+  if(isDef(ub)) {
+    var cmp = compare(key, ub)
+    if(cmp > 0 || (cmp === 0) && upperBoundExclusive(range))
+      return false
+  }
+
+  return true
+}
+
+exports.filter = function (range, compare) {
+  return function (key) {
+    return exports.contains(range, key, compare)
   }
 }
 
-},{"prr":73}],72:[function(require,module,exports){
-var all = module.exports.all = [
-  {
-    errno: -2,
-    code: 'ENOENT',
-    description: 'no such file or directory'
-  },
-  {
-    errno: -1,
-    code: 'UNKNOWN',
-    description: 'unknown error'
-  },
-  {
-    errno: 0,
-    code: 'OK',
-    description: 'success'
-  },
-  {
-    errno: 1,
-    code: 'EOF',
-    description: 'end of file'
-  },
-  {
-    errno: 2,
-    code: 'EADDRINFO',
-    description: 'getaddrinfo error'
-  },
-  {
-    errno: 3,
-    code: 'EACCES',
-    description: 'permission denied'
-  },
-  {
-    errno: 4,
-    code: 'EAGAIN',
-    description: 'resource temporarily unavailable'
-  },
-  {
-    errno: 5,
-    code: 'EADDRINUSE',
-    description: 'address already in use'
-  },
-  {
-    errno: 6,
-    code: 'EADDRNOTAVAIL',
-    description: 'address not available'
-  },
-  {
-    errno: 7,
-    code: 'EAFNOSUPPORT',
-    description: 'address family not supported'
-  },
-  {
-    errno: 8,
-    code: 'EALREADY',
-    description: 'connection already in progress'
-  },
-  {
-    errno: 9,
-    code: 'EBADF',
-    description: 'bad file descriptor'
-  },
-  {
-    errno: 10,
-    code: 'EBUSY',
-    description: 'resource busy or locked'
-  },
-  {
-    errno: 11,
-    code: 'ECONNABORTED',
-    description: 'software caused connection abort'
-  },
-  {
-    errno: 12,
-    code: 'ECONNREFUSED',
-    description: 'connection refused'
-  },
-  {
-    errno: 13,
-    code: 'ECONNRESET',
-    description: 'connection reset by peer'
-  },
-  {
-    errno: 14,
-    code: 'EDESTADDRREQ',
-    description: 'destination address required'
-  },
-  {
-    errno: 15,
-    code: 'EFAULT',
-    description: 'bad address in system call argument'
-  },
-  {
-    errno: 16,
-    code: 'EHOSTUNREACH',
-    description: 'host is unreachable'
-  },
-  {
-    errno: 17,
-    code: 'EINTR',
-    description: 'interrupted system call'
-  },
-  {
-    errno: 18,
-    code: 'EINVAL',
-    description: 'invalid argument'
-  },
-  {
-    errno: 19,
-    code: 'EISCONN',
-    description: 'socket is already connected'
-  },
-  {
-    errno: 20,
-    code: 'EMFILE',
-    description: 'too many open files'
-  },
-  {
-    errno: 21,
-    code: 'EMSGSIZE',
-    description: 'message too long'
-  },
-  {
-    errno: 22,
-    code: 'ENETDOWN',
-    description: 'network is down'
-  },
-  {
-    errno: 23,
-    code: 'ENETUNREACH',
-    description: 'network is unreachable'
-  },
-  {
-    errno: 24,
-    code: 'ENFILE',
-    description: 'file table overflow'
-  },
-  {
-    errno: 25,
-    code: 'ENOBUFS',
-    description: 'no buffer space available'
-  },
-  {
-    errno: 26,
-    code: 'ENOMEM',
-    description: 'not enough memory'
-  },
-  {
-    errno: 27,
-    code: 'ENOTDIR',
-    description: 'not a directory'
-  },
-  {
-    errno: 28,
-    code: 'EISDIR',
-    description: 'illegal operation on a directory'
-  },
-  {
-    errno: 29,
-    code: 'ENONET',
-    description: 'machine is not on the network'
-  },
-  {
-    errno: 31,
-    code: 'ENOTCONN',
-    description: 'socket is not connected'
-  },
-  {
-    errno: 32,
-    code: 'ENOTSOCK',
-    description: 'socket operation on non-socket'
-  },
-  {
-    errno: 33,
-    code: 'ENOTSUP',
-    description: 'operation not supported on socket'
-  },
-  {
-    errno: 34,
-    code: 'ENOENT',
-    description: 'no such file or directory'
-  },
-  {
-    errno: 35,
-    code: 'ENOSYS',
-    description: 'function not implemented'
-  },
-  {
-    errno: 36,
-    code: 'EPIPE',
-    description: 'broken pipe'
-  },
-  {
-    errno: 37,
-    code: 'EPROTO',
-    description: 'protocol error'
-  },
-  {
-    errno: 38,
-    code: 'EPROTONOSUPPORT',
-    description: 'protocol not supported'
-  },
-  {
-    errno: 39,
-    code: 'EPROTOTYPE',
-    description: 'protocol wrong type for socket'
-  },
-  {
-    errno: 40,
-    code: 'ETIMEDOUT',
-    description: 'connection timed out'
-  },
-  {
-    errno: 41,
-    code: 'ECHARSET',
-    description: 'invalid Unicode character'
-  },
-  {
-    errno: 42,
-    code: 'EAIFAMNOSUPPORT',
-    description: 'address family for hostname not supported'
-  },
-  {
-    errno: 44,
-    code: 'EAISERVICE',
-    description: 'servname not supported for ai_socktype'
-  },
-  {
-    errno: 45,
-    code: 'EAISOCKTYPE',
-    description: 'ai_socktype not supported'
-  },
-  {
-    errno: 46,
-    code: 'ESHUTDOWN',
-    description: 'cannot send after transport endpoint shutdown'
-  },
-  {
-    errno: 47,
-    code: 'EEXIST',
-    description: 'file already exists'
-  },
-  {
-    errno: 48,
-    code: 'ESRCH',
-    description: 'no such process'
-  },
-  {
-    errno: 49,
-    code: 'ENAMETOOLONG',
-    description: 'name too long'
-  },
-  {
-    errno: 50,
-    code: 'EPERM',
-    description: 'operation not permitted'
-  },
-  {
-    errno: 51,
-    code: 'ELOOP',
-    description: 'too many symbolic links encountered'
-  },
-  {
-    errno: 52,
-    code: 'EXDEV',
-    description: 'cross-device link not permitted'
-  },
-  {
-    errno: 53,
-    code: 'ENOTEMPTY',
-    description: 'directory not empty'
-  },
-  {
-    errno: 54,
-    code: 'ENOSPC',
-    description: 'no space left on device'
-  },
-  {
-    errno: 55,
-    code: 'EIO',
-    description: 'i/o error'
-  },
-  {
-    errno: 56,
-    code: 'EROFS',
-    description: 'read-only file system'
-  },
-  {
-    errno: 57,
-    code: 'ENODEV',
-    description: 'no such device'
-  },
-  {
-    errno: 58,
-    code: 'ESPIPE',
-    description: 'invalid seek'
-  },
-  {
-    errno: 59,
-    code: 'ECANCELED',
-    description: 'operation canceled'
-  }
-]
+}).call(this,{"isBuffer":require("../../../allex-toolbox-dev/node_modules/browserify/node_modules/insert-module-globals/node_modules/is-buffer/index.js")})
+},{"../../../allex-toolbox-dev/node_modules/browserify/node_modules/insert-module-globals/node_modules/is-buffer/index.js":9}],76:[function(require,module,exports){
+(function (process){
+var path = require('path');
+var fs = require('fs');
+var _0777 = parseInt('0777', 8);
 
-module.exports.errno = {}
-module.exports.code = {}
+module.exports = mkdirP.mkdirp = mkdirP.mkdirP = mkdirP;
 
-all.forEach(function (error) {
-  module.exports.errno[error.errno] = error
-  module.exports.code[error.code] = error
-})
-
-module.exports.custom = require('./custom')(module.exports)
-module.exports.create = module.exports.custom.createError
-
-},{"./custom":71}],73:[function(require,module,exports){
-/*!
-  * prr
-  * (c) 2013 Rod Vagg <rod@vagg.org>
-  * https://github.com/rvagg/prr
-  * License: MIT
-  */
-
-(function (name, context, definition) {
-  if (typeof module != 'undefined' && module.exports)
-    module.exports = definition()
-  else
-    context[name] = definition()
-})('prr', this, function() {
-
-  var setProperty = typeof Object.defineProperty == 'function'
-      ? function (obj, key, options) {
-          Object.defineProperty(obj, key, options)
-          return obj
-        }
-      : function (obj, key, options) { // < es5
-          obj[key] = options.value
-          return obj
-        }
-
-    , makeOptions = function (value, options) {
-        var oo = typeof options == 'object'
-          , os = !oo && typeof options == 'string'
-          , op = function (p) {
-              return oo
-                ? !!options[p]
-                : os
-                  ? options.indexOf(p[0]) > -1
-                  : false
-            }
-
-        return {
-            enumerable   : op('enumerable')
-          , configurable : op('configurable')
-          , writable     : op('writable')
-          , value        : value
-        }
-      }
-
-    , prr = function (obj, key, value, options) {
-        var k
-
-        options = makeOptions(value, options)
-
-        if (typeof key == 'object') {
-          for (k in key) {
-            if (Object.hasOwnProperty.call(key, k)) {
-              options.value = key[k]
-              setProperty(obj, k, options)
-            }
-          }
-          return obj
-        }
-
-        return setProperty(obj, key, options)
-      }
-
-  return prr
-})
-},{}],74:[function(require,module,exports){
-var inherits = require('inherits');
-var Readable = require('readable-stream').Readable;
-var extend = require('xtend');
-var EncodingError = require('level-errors').EncodingError;
-
-module.exports = ReadStream;
-inherits(ReadStream, Readable);
-
-function ReadStream(iterator, options){
-  if (!(this instanceof ReadStream)) return new ReadStream(iterator, options);
-  Readable.call(this, extend(options, {
-    objectMode: true
-  }));
-  this._iterator = iterator;
-  this._destroyed = false;
-  this._decoder = null;
-  if (options && options.decoder) this._decoder = options.decoder;
-  this.on('end', this._cleanup.bind(this));
-}
-
-ReadStream.prototype._read = function(){
-  var self = this;
-  if (this._destroyed) return;
-
-  this._iterator.next(function(err, key, value){
-    if (self._destroyed) return;
-    if (err) return self.emit('error', err);
-    if (key === undefined && value === undefined) {
-      self.push(null);
-    } else {
-      if (!self._decoder) return self.push({ key: key, value: value });
-
-      try {
-        var value = self._decoder(key, value);
-      } catch (err) {
-        self.emit('error', new EncodingError(err));
-        self.push(null);
-        return;
-      }
-      self.push(value);
+function mkdirP (p, opts, f, made) {
+    if (typeof opts === 'function') {
+        f = opts;
+        opts = {};
     }
-  });
+    else if (!opts || typeof opts !== 'object') {
+        opts = { mode: opts };
+    }
+    
+    var mode = opts.mode;
+    var xfs = opts.fs || fs;
+    
+    if (mode === undefined) {
+        mode = _0777 & (~process.umask());
+    }
+    if (!made) made = null;
+    
+    var cb = f || function () {};
+    p = path.resolve(p);
+    
+    xfs.mkdir(p, mode, function (er) {
+        if (!er) {
+            made = made || p;
+            return cb(null, made);
+        }
+        switch (er.code) {
+            case 'ENOENT':
+                mkdirP(path.dirname(p), opts, function (er, made) {
+                    if (er) cb(er, made);
+                    else mkdirP(p, opts, cb, made);
+                });
+                break;
+
+            // In the case of any other error, just see if there's a dir
+            // there already.  If so, then hooray!  If not, then something
+            // is borked.
+            default:
+                xfs.stat(p, function (er2, stat) {
+                    // if the stat fails, then that's super weird.
+                    // let the original error be the failure reason.
+                    if (er2 || !stat.isDirectory()) cb(er, made)
+                    else cb(null, made);
+                });
+                break;
+        }
+    });
+}
+
+mkdirP.sync = function sync (p, opts, made) {
+    if (!opts || typeof opts !== 'object') {
+        opts = { mode: opts };
+    }
+    
+    var mode = opts.mode;
+    var xfs = opts.fs || fs;
+    
+    if (mode === undefined) {
+        mode = _0777 & (~process.umask());
+    }
+    if (!made) made = null;
+
+    p = path.resolve(p);
+
+    try {
+        xfs.mkdirSync(p, mode);
+        made = made || p;
+    }
+    catch (err0) {
+        switch (err0.code) {
+            case 'ENOENT' :
+                made = sync(path.dirname(p), opts, made);
+                sync(p, opts, made);
+                break;
+
+            // In the case of any other error, just see if there's a dir
+            // there already.  If so, then hooray!  If not, then something
+            // is borked.
+            default:
+                var stat;
+                try {
+                    stat = xfs.statSync(p);
+                }
+                catch (err1) {
+                    throw err0;
+                }
+                if (!stat.isDirectory()) throw err0;
+                break;
+        }
+    }
+
+    return made;
 };
 
-ReadStream.prototype.destroy =
-ReadStream.prototype._cleanup = function(){
-  var self = this;
-  if (this._destroyed) return;
-  this._destroyed = true;
+}).call(this,require('_process'))
+},{"_process":11,"fs":1,"path":10}],77:[function(require,module,exports){
+var hasOwn = Object.prototype.hasOwnProperty;
+var toString = Object.prototype.toString;
 
-  this._iterator.end(function(err){
-    if (err) return self.emit('error', err);
-    self.emit('close');
-  });
+var isFunction = function (fn) {
+	var isFunc = (typeof fn === 'function' && !(fn instanceof RegExp)) || toString.call(fn) === '[object Function]';
+	if (!isFunc && typeof window !== 'undefined') {
+		isFunc = fn === window.setTimeout || fn === window.alert || fn === window.confirm || fn === window.prompt;
+	}
+	return isFunc;
+};
+
+module.exports = function forEach(obj, fn) {
+	if (!isFunction(fn)) {
+		throw new TypeError('iterator must be a function');
+	}
+	var i, k,
+		isString = typeof obj === 'string',
+		l = obj.length,
+		context = arguments.length > 2 ? arguments[2] : null;
+	if (l === +l) {
+		for (i = 0; i < l; i++) {
+			if (context === null) {
+				fn(isString ? obj.charAt(i) : obj[i], i, obj);
+			} else {
+				fn.call(context, isString ? obj.charAt(i) : obj[i], i, obj);
+			}
+		}
+	} else {
+		for (k in obj) {
+			if (hasOwn.call(obj, k)) {
+				if (context === null) {
+					fn(obj[k], k, obj);
+				} else {
+					fn.call(context, obj[k], k, obj);
+				}
+			}
+		}
+	}
 };
 
 
-},{"inherits":75,"level-errors":70,"readable-stream":84,"xtend":86}],75:[function(require,module,exports){
-arguments[4][8][0].apply(exports,arguments)
-},{"dup":8}],76:[function(require,module,exports){
+},{}],78:[function(require,module,exports){
+module.exports = Object.keys || require('./shim');
+
+
+},{"./shim":80}],79:[function(require,module,exports){
+var toString = Object.prototype.toString;
+
+module.exports = function isArguments(value) {
+	var str = toString.call(value);
+	var isArguments = str === '[object Arguments]';
+	if (!isArguments) {
+		isArguments = str !== '[object Array]'
+			&& value !== null
+			&& typeof value === 'object'
+			&& typeof value.length === 'number'
+			&& value.length >= 0
+			&& toString.call(value.callee) === '[object Function]';
+	}
+	return isArguments;
+};
+
+
+},{}],80:[function(require,module,exports){
+(function () {
+	"use strict";
+
+	// modified from https://github.com/kriskowal/es5-shim
+	var has = Object.prototype.hasOwnProperty,
+		toString = Object.prototype.toString,
+		forEach = require('./foreach'),
+		isArgs = require('./isArguments'),
+		hasDontEnumBug = !({'toString': null}).propertyIsEnumerable('toString'),
+		hasProtoEnumBug = (function () {}).propertyIsEnumerable('prototype'),
+		dontEnums = [
+			"toString",
+			"toLocaleString",
+			"valueOf",
+			"hasOwnProperty",
+			"isPrototypeOf",
+			"propertyIsEnumerable",
+			"constructor"
+		],
+		keysShim;
+
+	keysShim = function keys(object) {
+		var isObject = object !== null && typeof object === 'object',
+			isFunction = toString.call(object) === '[object Function]',
+			isArguments = isArgs(object),
+			theKeys = [];
+
+		if (!isObject && !isFunction && !isArguments) {
+			throw new TypeError("Object.keys called on a non-object");
+		}
+
+		if (isArguments) {
+			forEach(object, function (value) {
+				theKeys.push(value);
+			});
+		} else {
+			var name,
+				skipProto = hasProtoEnumBug && isFunction;
+
+			for (name in object) {
+				if (!(skipProto && name === 'prototype') && has.call(object, name)) {
+					theKeys.push(name);
+				}
+			}
+		}
+
+		if (hasDontEnumBug) {
+			var ctor = object.constructor,
+				skipConstructor = ctor && ctor.prototype === object;
+
+			forEach(dontEnums, function (dontEnum) {
+				if (!(skipConstructor && dontEnum === 'constructor') && has.call(object, dontEnum)) {
+					theKeys.push(dontEnum);
+				}
+			});
+		}
+		return theKeys;
+	};
+
+	module.exports = keysShim;
+}());
+
+
+},{"./foreach":77,"./isArguments":79}],81:[function(require,module,exports){
+arguments[4][56][0].apply(exports,arguments)
+},{"dup":56}],82:[function(require,module,exports){
 (function (process){
 // Copyright Joyent, Inc. and other Node contributors.
 //
@@ -10754,7 +11381,7 @@ function forEach (xs, f) {
 }
 
 }).call(this,require('_process'))
-},{"./_stream_readable":78,"./_stream_writable":80,"_process":11,"core-util-is":81,"inherits":75}],77:[function(require,module,exports){
+},{"./_stream_readable":84,"./_stream_writable":86,"_process":11,"core-util-is":45,"inherits":58}],83:[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -10802,7 +11429,7 @@ PassThrough.prototype._transform = function(chunk, encoding, cb) {
   cb(null, chunk);
 };
 
-},{"./_stream_transform":79,"core-util-is":81,"inherits":75}],78:[function(require,module,exports){
+},{"./_stream_transform":85,"core-util-is":45,"inherits":58}],84:[function(require,module,exports){
 (function (process){
 // Copyright Joyent, Inc. and other Node contributors.
 //
@@ -11757,7 +12384,7 @@ function indexOf (xs, x) {
 }
 
 }).call(this,require('_process'))
-},{"./_stream_duplex":76,"_process":11,"buffer":3,"core-util-is":81,"events":7,"inherits":75,"isarray":82,"stream":27,"string_decoder/":83,"util":2}],79:[function(require,module,exports){
+},{"./_stream_duplex":82,"_process":11,"buffer":3,"core-util-is":45,"events":7,"inherits":58,"isarray":59,"stream":27,"string_decoder/":88,"util":2}],85:[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -11968,7 +12595,7 @@ function done(stream, er) {
   return stream.push(null);
 }
 
-},{"./_stream_duplex":76,"core-util-is":81,"inherits":75}],80:[function(require,module,exports){
+},{"./_stream_duplex":82,"core-util-is":45,"inherits":58}],86:[function(require,module,exports){
 (function (process){
 // Copyright Joyent, Inc. and other Node contributors.
 //
@@ -12449,125 +13076,7 @@ function endWritable(stream, state, cb) {
 }
 
 }).call(this,require('_process'))
-},{"./_stream_duplex":76,"_process":11,"buffer":3,"core-util-is":81,"inherits":75,"stream":27}],81:[function(require,module,exports){
-(function (Buffer){
-// Copyright Joyent, Inc. and other Node contributors.
-//
-// Permission is hereby granted, free of charge, to any person obtaining a
-// copy of this software and associated documentation files (the
-// "Software"), to deal in the Software without restriction, including
-// without limitation the rights to use, copy, modify, merge, publish,
-// distribute, sublicense, and/or sell copies of the Software, and to permit
-// persons to whom the Software is furnished to do so, subject to the
-// following conditions:
-//
-// The above copyright notice and this permission notice shall be included
-// in all copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
-// OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-// MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN
-// NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
-// DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
-// OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
-// USE OR OTHER DEALINGS IN THE SOFTWARE.
-
-// NOTE: These type checking functions intentionally don't use `instanceof`
-// because it is fragile and can be easily faked with `Object.create()`.
-
-function isArray(arg) {
-  if (Array.isArray) {
-    return Array.isArray(arg);
-  }
-  return objectToString(arg) === '[object Array]';
-}
-exports.isArray = isArray;
-
-function isBoolean(arg) {
-  return typeof arg === 'boolean';
-}
-exports.isBoolean = isBoolean;
-
-function isNull(arg) {
-  return arg === null;
-}
-exports.isNull = isNull;
-
-function isNullOrUndefined(arg) {
-  return arg == null;
-}
-exports.isNullOrUndefined = isNullOrUndefined;
-
-function isNumber(arg) {
-  return typeof arg === 'number';
-}
-exports.isNumber = isNumber;
-
-function isString(arg) {
-  return typeof arg === 'string';
-}
-exports.isString = isString;
-
-function isSymbol(arg) {
-  return typeof arg === 'symbol';
-}
-exports.isSymbol = isSymbol;
-
-function isUndefined(arg) {
-  return arg === void 0;
-}
-exports.isUndefined = isUndefined;
-
-function isRegExp(re) {
-  return objectToString(re) === '[object RegExp]';
-}
-exports.isRegExp = isRegExp;
-
-function isObject(arg) {
-  return typeof arg === 'object' && arg !== null;
-}
-exports.isObject = isObject;
-
-function isDate(d) {
-  return objectToString(d) === '[object Date]';
-}
-exports.isDate = isDate;
-
-function isError(e) {
-  return (objectToString(e) === '[object Error]' || e instanceof Error);
-}
-exports.isError = isError;
-
-function isFunction(arg) {
-  return typeof arg === 'function';
-}
-exports.isFunction = isFunction;
-
-function isPrimitive(arg) {
-  return arg === null ||
-         typeof arg === 'boolean' ||
-         typeof arg === 'number' ||
-         typeof arg === 'string' ||
-         typeof arg === 'symbol' ||  // ES6 symbol
-         typeof arg === 'undefined';
-}
-exports.isPrimitive = isPrimitive;
-
-exports.isBuffer = Buffer.isBuffer;
-
-function objectToString(o) {
-  return Object.prototype.toString.call(o);
-}
-
-}).call(this,{"isBuffer":require("../../../../../../../../../../../../../../allex-toolbox-dev/node_modules/browserify/node_modules/insert-module-globals/node_modules/is-buffer/index.js")})
-},{"../../../../../../../../../../../../../../allex-toolbox-dev/node_modules/browserify/node_modules/insert-module-globals/node_modules/is-buffer/index.js":9}],82:[function(require,module,exports){
-module.exports = Array.isArray || function (arr) {
-  return Object.prototype.toString.call(arr) == '[object Array]';
-};
-
-},{}],83:[function(require,module,exports){
-arguments[4][28][0].apply(exports,arguments)
-},{"buffer":3,"dup":28}],84:[function(require,module,exports){
+},{"./_stream_duplex":82,"_process":11,"buffer":3,"core-util-is":45,"inherits":58,"stream":27}],87:[function(require,module,exports){
 (function (process){
 exports = module.exports = require('./lib/_stream_readable.js');
 exports.Stream = require('stream');
@@ -12581,12 +13090,45 @@ if (!process.browser && process.env.READABLE_STREAM === 'disable') {
 }
 
 }).call(this,require('_process'))
-},{"./lib/_stream_duplex.js":76,"./lib/_stream_passthrough.js":77,"./lib/_stream_readable.js":78,"./lib/_stream_transform.js":79,"./lib/_stream_writable.js":80,"_process":11,"stream":27}],85:[function(require,module,exports){
-arguments[4][73][0].apply(exports,arguments)
-},{"dup":73}],86:[function(require,module,exports){
-module.exports = extend
+},{"./lib/_stream_duplex.js":82,"./lib/_stream_passthrough.js":83,"./lib/_stream_readable.js":84,"./lib/_stream_transform.js":85,"./lib/_stream_writable.js":86,"_process":11,"stream":27}],88:[function(require,module,exports){
+arguments[4][28][0].apply(exports,arguments)
+},{"buffer":3,"dup":28}],89:[function(require,module,exports){
+(function (Buffer){
+/**
+ * Convert a typed array to a Buffer without a copy
+ *
+ * Author:   Feross Aboukhadijeh <feross@feross.org> <http://feross.org>
+ * License:  MIT
+ *
+ * `npm install typedarray-to-buffer`
+ */
 
-var hasOwnProperty = Object.prototype.hasOwnProperty;
+module.exports = function (arr) {
+  if (typeof Buffer._augment === 'function' && Buffer.TYPED_ARRAY_SUPPORT) {
+    // If `Buffer` is from the `buffer` module and this browser supports typed arrays,
+    // then augment it with all the `Buffer` methods.
+    return Buffer._augment(arr)
+  } else {
+    // Otherwise, fallback to creating a `Buffer` with a copy.
+    return new Buffer(arr)
+  }
+}
+
+}).call(this,require("buffer").Buffer)
+},{"buffer":3}],90:[function(require,module,exports){
+module.exports = hasKeys
+
+function hasKeys(source) {
+    return source !== null &&
+        (typeof source === "object" ||
+        typeof source === "function")
+}
+
+},{}],91:[function(require,module,exports){
+var Keys = require("object-keys")
+var hasKeys = require("./has-keys")
+
+module.exports = extend
 
 function extend() {
     var target = {}
@@ -12594,283 +13136,22 @@ function extend() {
     for (var i = 0; i < arguments.length; i++) {
         var source = arguments[i]
 
-        for (var key in source) {
-            if (hasOwnProperty.call(source, key)) {
-                target[key] = source[key]
-            }
+        if (!hasKeys(source)) {
+            continue
+        }
+
+        var keys = Keys(source)
+
+        for (var j = 0; j < keys.length; j++) {
+            var name = keys[j]
+            target[name] = source[name]
         }
     }
 
     return target
 }
 
-},{}],87:[function(require,module,exports){
-module.exports={
-  "name": "levelup",
-  "description": "Fast & simple storage - a Node.js-style LevelDB wrapper",
-  "version": "1.3.2",
-  "contributors": [
-    {
-      "name": "Rod Vagg",
-      "email": "r@va.gg",
-      "url": "https://github.com/rvagg"
-    },
-    {
-      "name": "John Chesley",
-      "email": "john@chesl.es",
-      "url": "https://github.com/chesles/"
-    },
-    {
-      "name": "Jake Verbaten",
-      "email": "raynos2@gmail.com",
-      "url": "https://github.com/raynos"
-    },
-    {
-      "name": "Dominic Tarr",
-      "email": "dominic.tarr@gmail.com",
-      "url": "https://github.com/dominictarr"
-    },
-    {
-      "name": "Max Ogden",
-      "email": "max@maxogden.com",
-      "url": "https://github.com/maxogden"
-    },
-    {
-      "name": "Lars-Magnus Skog",
-      "email": "ralphtheninja@riseup.net",
-      "url": "https://github.com/ralphtheninja"
-    },
-    {
-      "name": "David Björklund",
-      "email": "david.bjorklund@gmail.com",
-      "url": "https://github.com/kesla"
-    },
-    {
-      "name": "Julian Gruber",
-      "email": "julian@juliangruber.com",
-      "url": "https://github.com/juliangruber"
-    },
-    {
-      "name": "Paolo Fragomeni",
-      "email": "paolo@async.ly",
-      "url": "https://github.com/0x00a"
-    },
-    {
-      "name": "Anton Whalley",
-      "email": "anton.whalley@nearform.com",
-      "url": "https://github.com/No9"
-    },
-    {
-      "name": "Matteo Collina",
-      "email": "matteo.collina@gmail.com",
-      "url": "https://github.com/mcollina"
-    },
-    {
-      "name": "Pedro Teixeira",
-      "email": "pedro.teixeira@gmail.com",
-      "url": "https://github.com/pgte"
-    },
-    {
-      "name": "James Halliday",
-      "email": "mail@substack.net",
-      "url": "https://github.com/substack"
-    },
-    {
-      "name": "Jarrett Cruger",
-      "email": "jcrugzz@gmail.com",
-      "url": "https://github.com/jcrugzz"
-    }
-  ],
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/level/levelup.git"
-  },
-  "homepage": "https://github.com/level/levelup",
-  "keywords": [
-    "leveldb",
-    "stream",
-    "database",
-    "db",
-    "store",
-    "storage",
-    "json"
-  ],
-  "main": "lib/levelup.js",
-  "dependencies": {
-    "deferred-leveldown": "~1.2.1",
-    "level-codec": "~6.1.0",
-    "level-errors": "~1.0.3",
-    "level-iterator-stream": "~1.3.0",
-    "prr": "~1.0.1",
-    "semver": "~5.1.0",
-    "xtend": "~4.0.0"
-  },
-  "devDependencies": {
-    "async": "~1.5.0",
-    "bustermove": "~1.0.0",
-    "tap": "~2.3.1",
-    "delayed": "~1.0.1",
-    "faucet": "~0.0.1",
-    "leveldown": "^1.1.0",
-    "memdown": "~1.1.0",
-    "msgpack-js": "~0.3.0",
-    "referee": "~1.2.0",
-    "rimraf": "~2.4.3",
-    "slow-stream": "0.0.4",
-    "tape": "~4.2.1"
-  },
-  "browser": {
-    "leveldown": false,
-    "leveldown/package": false,
-    "semver": false
-  },
-  "scripts": {
-    "test": "tape test/*-test.js | faucet"
-  },
-  "license": "MIT",
-  "gitHead": "bcc242cfc4ec035f9228a5cd54903cb126659a00",
-  "bugs": {
-    "url": "https://github.com/level/levelup/issues"
-  },
-  "_id": "levelup@1.3.2",
-  "_shasum": "b321d3071f0e75c2dfaf2f0fe8864e5b9a387bc9",
-  "_from": "levelup@>=1.3.0 <1.4.0",
-  "_npmVersion": "3.8.6",
-  "_nodeVersion": "6.1.0",
-  "_npmUser": {
-    "name": "ralphtheninja",
-    "email": "ralphtheninja@riseup.net"
-  },
-  "maintainers": [
-    {
-      "name": "rvagg",
-      "email": "rod@vagg.org"
-    },
-    {
-      "name": "ralphtheninja",
-      "email": "ralphtheninja@riseup.net"
-    },
-    {
-      "name": "juliangruber",
-      "email": "julian@juliangruber.com"
-    }
-  ],
-  "dist": {
-    "shasum": "b321d3071f0e75c2dfaf2f0fe8864e5b9a387bc9",
-    "tarball": "https://registry.npmjs.org/levelup/-/levelup-1.3.2.tgz"
-  },
-  "_npmOperationalInternal": {
-    "host": "packages-16-east.internal.npmjs.com",
-    "tmp": "tmp/levelup-1.3.2.tgz_1463496525467_0.4644940535072237"
-  },
-  "directories": {},
-  "_resolved": "https://registry.npmjs.org/levelup/-/levelup-1.3.2.tgz",
-  "readme": "ERROR: No README data found!"
-}
-
-},{}],88:[function(require,module,exports){
-(function (process){
-var path = require('path');
-var fs = require('fs');
-var _0777 = parseInt('0777', 8);
-
-module.exports = mkdirP.mkdirp = mkdirP.mkdirP = mkdirP;
-
-function mkdirP (p, opts, f, made) {
-    if (typeof opts === 'function') {
-        f = opts;
-        opts = {};
-    }
-    else if (!opts || typeof opts !== 'object') {
-        opts = { mode: opts };
-    }
-    
-    var mode = opts.mode;
-    var xfs = opts.fs || fs;
-    
-    if (mode === undefined) {
-        mode = _0777 & (~process.umask());
-    }
-    if (!made) made = null;
-    
-    var cb = f || function () {};
-    p = path.resolve(p);
-    
-    xfs.mkdir(p, mode, function (er) {
-        if (!er) {
-            made = made || p;
-            return cb(null, made);
-        }
-        switch (er.code) {
-            case 'ENOENT':
-                mkdirP(path.dirname(p), opts, function (er, made) {
-                    if (er) cb(er, made);
-                    else mkdirP(p, opts, cb, made);
-                });
-                break;
-
-            // In the case of any other error, just see if there's a dir
-            // there already.  If so, then hooray!  If not, then something
-            // is borked.
-            default:
-                xfs.stat(p, function (er2, stat) {
-                    // if the stat fails, then that's super weird.
-                    // let the original error be the failure reason.
-                    if (er2 || !stat.isDirectory()) cb(er, made)
-                    else cb(null, made);
-                });
-                break;
-        }
-    });
-}
-
-mkdirP.sync = function sync (p, opts, made) {
-    if (!opts || typeof opts !== 'object') {
-        opts = { mode: opts };
-    }
-    
-    var mode = opts.mode;
-    var xfs = opts.fs || fs;
-    
-    if (mode === undefined) {
-        mode = _0777 & (~process.umask());
-    }
-    if (!made) made = null;
-
-    p = path.resolve(p);
-
-    try {
-        xfs.mkdirSync(p, mode);
-        made = made || p;
-    }
-    catch (err0) {
-        switch (err0.code) {
-            case 'ENOENT' :
-                made = sync(path.dirname(p), opts, made);
-                sync(p, opts, made);
-                break;
-
-            // In the case of any other error, just see if there's a dir
-            // there already.  If so, then hooray!  If not, then something
-            // is borked.
-            default:
-                var stat;
-                try {
-                    stat = xfs.statSync(p);
-                }
-                catch (err1) {
-                    throw err0;
-                }
-                if (!stat.isDirectory()) throw err0;
-                break;
-        }
-    }
-
-    return made;
-};
-
-}).call(this,require('_process'))
-},{"_process":11,"fs":1,"path":10}],89:[function(require,module,exports){
+},{"./has-keys":90,"object-keys":78}],92:[function(require,module,exports){
 function createNumChecker(execlib) {
   'use strict';
   var lib = execlib.lib;
@@ -12895,7 +13176,7 @@ function createNumChecker(execlib) {
 
 module.exports = createNumChecker;
 
-},{}],90:[function(require,module,exports){
+},{}],93:[function(require,module,exports){
 function createQueueableHandler(execlib, leveldblib) {
   'use strict';
   var lib = execlib.lib,
@@ -12926,7 +13207,7 @@ function createQueueableHandler(execlib, leveldblib) {
     }
     var qitem = defer ? [operation, args, defer] : [operation, args];
     if (this._busy) {
-      this.q.push(qitem);
+      this.q.add(qitem);
       return;
     }
     var m = this[operation];
@@ -12977,7 +13258,7 @@ function createQueueableHandler(execlib, leveldblib) {
 module.exports = createQueueableHandler;
 
 
-},{}],91:[function(require,module,exports){
+},{}],94:[function(require,module,exports){
 function createQueueableMixin (execlib) {
   'use strict';
   var lib = execlib.lib,
@@ -13000,12 +13281,16 @@ function createQueueableMixin (execlib) {
     this._checker = this.checkQ.bind(this);
     this._finisher = this.finish.bind(this);
   }
+  function trueresolver (waiter) {
+    waiter.resolve(true);
+  }
+  function rejecter(waiter) {
+    waiter.reject(_destroyingError);
+  }
   QueueableMixin.prototype.destroy = function () {
     this._checker = null;
     if (this._waiters) {
-      while (this._waiters.getFifoLength()) {
-        this._waiters.pop().reject(_destroyingError);
-      }
+      this._waiters.drain(rejecter);
       this._waiters.destroy();
     }
     this._waiters = null;
@@ -13038,9 +13323,7 @@ function createQueueableMixin (execlib) {
   QueueableMixin.prototype.checkQ = function () {
     var q;
     if (this.q.length<1) {
-      if (this._waiters.getFifoLength()) {
-        this._waiters.pop().resolve(true);
-      }
+      this._waiters.pop(trueresolver);
       return;
     }
     q = this.q;
@@ -13105,22 +13388,21 @@ function createQueueableMixin (execlib) {
 
 module.exports = createQueueableMixin;
 
-},{}],92:[function(require,module,exports){
+},{}],95:[function(require,module,exports){
 module.exports = [{
   title: 'Streaming Defer Id',
   type: 'string',
   strongtype: 'String'
 }];
 
-},{}],93:[function(require,module,exports){
-function createServicePackMixin(execlib) {
+},{}],96:[function(require,module,exports){
+function createServicePackMixin(execlib, datafilterslib) {
   var lib = execlib.lib,
     q = lib.q,
     qlib = lib.qlib,
     JobBase = qlib.JobBase;
 
   function StreamingDefer(defer) {
-    console.log('isPromise', q.isPromise(defer.promise));
     JobBase.call(this, defer);
     this.id = lib.uid();
     this.stream = null;
@@ -13151,7 +13433,7 @@ function createServicePackMixin(execlib) {
     this.__streamingDefers = null;
   };
 
-  function notificator(countobj, streamingdefer, options, item, stream) {
+  function notifier(countobj, streamingdefer, options, item, stream) {
     streamingdefer.setStream(stream);
     countobj.count ++;
     streamingdefer.notify(item);
@@ -13162,16 +13444,25 @@ function createServicePackMixin(execlib) {
   }
 
   UserLevelDBMixin.prototype.streamLevelDB = function (db, options, defer) {
-    var remover, streamingdefer;
+    var remover, streamingdefer, streamingobj, sds;
     if (options && options.pagesize) {
       streamingdefer = new StreamingDefer(defer);
-      remover = qlib.executor(this.__streamingDefers.remove.bind(this.__streamingDefers, streamingdefer.id));
+      sds = this.__streamingDefers; 
+      streamingobj = {count: 0};
+      remover = function () {
+        sds.remove(streamingdefer.id);
+        streamingdefer.resolve(streamingobj);
+        streamingdefer = null;
+        streamingobj = null;
+        options = null;
+        sds = null;
+        remover = null;
+      };
       this.__streamingDefers.add(streamingdefer.id, streamingdefer);
-      streamingdefer.defer.promise.then(
+      db.traverse(notifier.bind(null, streamingobj, streamingdefer, options),options).then(
         remover,
         remover
       );
-      db.traverse(notificator.bind(null, {count: 0}, streamingdefer, options));
     } else {
       return db.streamInto(defer, options);
     }
@@ -13203,7 +13494,7 @@ function createServicePackMixin(execlib) {
 
 module.exports = createServicePackMixin;
 
-},{"./resumeleveldbstreamdescriptor":92}],94:[function(require,module,exports){
+},{"./resumeleveldbstreamdescriptor":95}],97:[function(require,module,exports){
 function createShift2Pusher(execlib, leveldblib) {
   'use strict';
   var lib = execlib.lib,
@@ -13293,7 +13584,7 @@ function createShift2Pusher(execlib, leveldblib) {
 
 module.exports = createShift2Pusher;
 
-},{}],95:[function(require,module,exports){
+},{}],98:[function(require,module,exports){
 function createStreamInSink(execlib) {
   var q = execlib.lib.q,
     qlib = execlib.lib.qlib;
@@ -13310,7 +13601,6 @@ function createStreamInSink(execlib) {
 
   return function (sink, method, options, itemcb, pagecb) {
     var d = q.defer();
-    console.log('calling', method, options);
     var sd = sink.call(method, options);
     sd.then(
       d.resolve.bind(d),
@@ -13323,7 +13613,7 @@ function createStreamInSink(execlib) {
 
 module.exports = createStreamInSink;
 
-},{}],96:[function(require,module,exports){
+},{}],99:[function(require,module,exports){
 function createChainedOperationsJob(execlib) {
   'use strict';
 
@@ -13335,7 +13625,7 @@ function createChainedOperationsJob(execlib) {
 
 module.exports = createChainedOperationsJob;
 
-},{}],97:[function(require,module,exports){
+},{}],100:[function(require,module,exports){
 function createFiniteLengthInsertJob(execlib, KnownLengthInsertJob) {
   'use strict';
   var lib = execlib.lib,
@@ -13367,7 +13657,7 @@ function createFiniteLengthInsertJob(execlib, KnownLengthInsertJob) {
 
 module.exports = createFiniteLengthInsertJob;
 
-},{}],98:[function(require,module,exports){
+},{}],101:[function(require,module,exports){
 function createKnownLengthInsertJob(execlib, JobBase) {
   'use strict';
   var lib = execlib.lib,
