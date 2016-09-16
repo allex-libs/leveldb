@@ -243,7 +243,7 @@ function createDBHandler (execlib, datafilterslib) {
   function errorOfferrerToProcessor(handler, defer, key, processorfunc, defaultrecord, error) {
     if (error.notFound) {
       //console.log('record not found for', key);
-      offerrerToProcessor(handler, defer, key, processorfunc, defaultEvaluator(defaultrecord, defer) || null);
+      offerrerToProcessor(handler, defer, key, processorfunc, defaultEvaluator(defaultrecord, defer));
     } else {
       console.error('Error in getting data for upsert!', error);
       defer.reject(error);
@@ -274,7 +274,7 @@ function createDBHandler (execlib, datafilterslib) {
     return item+amount;
   }
   function incer(fieldindex, amount, options, record) {
-    if (!lib.isArray(record)) {
+    if (fieldindex!==null && !lib.isArray(record)) {
       var msg = 'Received record '+record+'. Did you specify a default record for inc?';
       console.error(msg);
       throw new lib.Error('INVALID_RECORD', msg);
@@ -284,7 +284,10 @@ function createDBHandler (execlib, datafilterslib) {
       should = options.criterionfunction(record, amount);
     }
     if (should) {
-      return record.map(incmapper.bind(null, fieldindex, options.dec ? -amount : amount));
+      if (lib.isArray(record)) {
+        return record.map(incmapper.bind(null, fieldindex, options.dec ? -amount : amount));
+      }
+      return options.dec ? record-amount : record+amount;
     } else {
       return null;
     }
