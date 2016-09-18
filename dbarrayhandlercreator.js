@@ -45,6 +45,7 @@ function createDBArray(execlib, leveldblib) {
     this.tail = null;
     this.head = null;
     console.log('DBArrayHandler destroyed');
+    QueueableHandler.prototype.destroy.call(this);
   };
   DBArrayHandler.prototype.setDB = function (db, prophash) {
     QueueableHandler.prototype.setDB.call(this, db, prophash);
@@ -53,6 +54,7 @@ function createDBArray(execlib, leveldblib) {
         this.onInitDone.bind(this, prophash)
       );
     }
+    prophash = null;
   };
   DBArrayHandler.prototype.onInitDone = function (prophash) {
     if (this.head === Infinity) {
@@ -68,6 +70,7 @@ function createDBArray(execlib, leveldblib) {
     if (prophash.dbarraystarteddefer) {
       prophash.dbarraystarteddefer.resolve(this);
     }
+    prophash = null;
   };
   DBArrayHandler.prototype.onInitTraversal = function (item) {
     if (this.head === null) {

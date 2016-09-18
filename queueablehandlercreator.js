@@ -69,6 +69,7 @@ function createQueueableHandler(execlib, leveldblib) {
     var batch = this.db.batch();
     consume(_q, putter.bind(null, batch));
     batch.write(this.finish.bind(this, _q));
+    batch = null;
     return this._busy.promise;
   };
   QueueableDBHandler.consume = consume;

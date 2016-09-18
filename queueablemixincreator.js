@@ -58,6 +58,7 @@ function createQueueableMixin (execlib) {
       cb
     );
     this.busy(d);
+    cb = null;
   };
   QueueableMixin.prototype.checkQ = function () {
     var q;
@@ -77,6 +78,7 @@ function createQueueableMixin (execlib) {
     if ('function' === typeof cb) {
       cb(this._finisher);
     }
+    cb = null;
   };
   function qresolver(item) {
     var d = item[2];
@@ -90,30 +92,32 @@ function createQueueableMixin (execlib) {
     if (item[2]) {
       item[2].reject(err);
     }
+    err = null;
   }
-  QueueableMixin.prototype.finish = function (q, err) {
+  QueueableMixin.prototype.finish = function (_q, err) {
     //console.log('finish', q, err);
     if (err) {
       console.trace();
       console.log('error in batch', err);
-      if (q) {
+      if (_q) {
         consume(q,qrejecter.bind(null, err));
-        if (q.destroy) {
-          q.destroy();
+        if (_q.destroy) {
+          _q.destroy();
         }
       }
       this._busy.reject(err);
     } else {
-      if (q) {
-        consume(q,qresolver);
-        if (q.destroy) {
-          q.destroy();
+      if (_q) {
+        consume(_q,qresolver);
+        if (_q.destroy) {
+          _q.destroy();
         }
       }
       this._busy.resolve(true);
     }
     this._busy = null;
     this.checkQ();
+    _q = null;
   };
 
   QueueableMixin.inheritMethods = function (childclass) {

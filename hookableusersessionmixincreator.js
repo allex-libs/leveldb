@@ -44,7 +44,7 @@ function createHookableUserSessionMixin (execlib) {
     } else {
       this.dbkeys = this.dbkeys || [];
       lib.arryOperations.appendNonExistingItems(this.dbkeys, dbkeys);
-      checkforlistener = this.dbkeys.length;
+      checkforlistener = this.dbkeys.length>0;
     }
     if (checkforlistener) {
       if (doscan) {
@@ -57,6 +57,7 @@ function createHookableUserSessionMixin (execlib) {
         this.postScan(defer, checkforlistener);
       }
     }
+    defer = null;
   };
 
   HookableUserSessionMixin.prototype.onScan = function (accounthash) {
@@ -73,6 +74,7 @@ function createHookableUserSessionMixin (execlib) {
       this.stopListening();
     }
     defer.resolve(true);
+    defer = null;
   };
 
   HookableUserSessionMixin.prototype._unhook = function (accountname){
@@ -96,6 +98,7 @@ function createHookableUserSessionMixin (execlib) {
     if (!lib.isArray(dbkeys)) {
       this.stopListening();
       defer.resolve(true);
+      defer = null;
       return;
     }
     dbkeys.forEach (this._unhook.bind(this));
@@ -103,6 +106,7 @@ function createHookableUserSessionMixin (execlib) {
       this.stopListening();
     }
     defer.resolve('ok');
+    defer = null;
   };
 
   HookableUserSessionMixin.prototype.stopListening = function () {

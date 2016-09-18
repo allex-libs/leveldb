@@ -341,16 +341,6 @@ function createDBHandler (execlib, datafilterslib) {
       cb(item, stream);
     }
   }
-  function streamEnder(defer, stream, destroyables) {
-    if (lib.isArray(destroyables) && destroyables.length>0) {
-      lib.arryDestroyAll(destroyables);
-    }
-    stream.removeAllListeners();
-    defer.resolve(true);
-    defer = null;
-    stream = null;
-    destroyables = null;
-  }
   function datafilterer (filter, keyfilter) {
     var ret = function (item) {
       if (filter && !filter.isOK(item.value)) {
@@ -364,6 +354,9 @@ function createDBHandler (execlib, datafilterslib) {
     ret.destroy = function () {
       filter = null;
       keyfilter = null;
+      if (ret) {
+        ret.destroy = null;
+      }
       ret = null;
     };
     return ret;
@@ -371,7 +364,9 @@ function createDBHandler (execlib, datafilterslib) {
   LevelDBHandler.prototype.traverse = function (cb, options) {
     var stream = this.getReadStream(options),
       d = (options ? options.defer : null) || q.defer(),
-      destroyables = [];
+      destroyables = [stream],
+      _lisa = lib.isArray,
+      _lada = lib.arryDestroyAll;
     switch (typeof (options ? options.filter : void 0)) {
       case 'function':
         stream.on('data', functionFilterStreamTraverser.bind(null, options.filter, stream, cb));
@@ -386,7 +381,7 @@ function createDBHandler (execlib, datafilterslib) {
           );
           stream.on('data', functionFilterStreamTraverser.bind(
             null, 
-            destroyables[0],
+            destroyables[1],
             stream,
             cb));
         } catch (e) {
@@ -399,7 +394,21 @@ function createDBHandler (execlib, datafilterslib) {
         stream.on('data', streamTraverser.bind(null, stream, cb));
         break;
     }
-    stream.on('end', streamEnder.bind(null, d, stream, destroyables));
+    //stream.on('end', streamEnder.bind(null, d, stream, destroyables));
+    stream.on('end', function streamEnder() {
+      stream.removeAllListeners();
+      if (_lisa(destroyables) && destroyables.length>0) {
+        _lada(destroyables);
+      }
+      d.resolve(true);
+      d = null;
+      stream = null;
+      destroyables = null;
+      options = null;
+      cb = null;
+      _lisa = null;
+      _lada = null;
+    });
     return d.promise;
   };
   function pusher(container, item) {
