@@ -26,9 +26,15 @@ function realCreator(execlib, datafilterslib) {
     LevelDBHandler: LevelDBHandler,
     NullCodec:_nullcodec,
     VerbatimDecoder: require('./codecs/verbatimdecodercreator')(execlib),
-    Int8Codec: require('./codecs/int8codeccreator')(execlib, numchecker),
-    Int16Codec: require('./codecs/int16codeccreator')(execlib, numchecker),
-    Int32Codec: require('./codecs/int32codeccreator')(execlib, numchecker),
+    ByteCodec: require('./codecs/bytecodeccreator')(execlib, numchecker),
+    UInt16LECodec: require('./codecs/uint16lecodeccreator')(execlib, numchecker),
+    UInt16BECodec: require('./codecs/uint16becodeccreator')(execlib, numchecker),
+    Int16LECodec: require('./codecs/int16lecodeccreator')(execlib, numchecker),
+    Int16BECodec: require('./codecs/int16becodeccreator')(execlib, numchecker),
+    UInt32LECodec: require('./codecs/uint32lecodeccreator')(execlib, numchecker),
+    UInt32BECodec: require('./codecs/uint32becodeccreator')(execlib, numchecker),
+    Int32LECodec: require('./codecs/int32lecodeccreator')(execlib, numchecker),
+    Int32BECodec: require('./codecs/int32becodeccreator')(execlib, numchecker),
     Int64Codec: require('./codecs/int64codeccreator')(execlib, numchecker)
   };
 

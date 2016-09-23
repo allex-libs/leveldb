@@ -1,4 +1,4 @@
-function createInt32Codec(execlib, numchecker) {
+function createUInt32LECodec(execlib, numchecker) {
   'use strict';
   var lib = execlib.lib;
   return {
@@ -8,15 +8,15 @@ function createInt32Codec(execlib, numchecker) {
         throw new lib('NUMBER_TOO_LARGE_FOR_32BITS', num);
       }
       var ret = new Buffer(4);
-      ret.writeUInt32BE(num);
+      ret.writeUInt32LE(num);
       return ret;
     },
     decode: function (buff) {
-      return buff.readUInt32BE(0);
+      return buff.readUInt32LE(0);
     },
     buffer: true,
     type: 'int32'
   };
 }
 
-module.exports = createInt32Codec;
+module.exports = createUInt32LECodec;

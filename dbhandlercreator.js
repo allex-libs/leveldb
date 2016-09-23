@@ -46,18 +46,28 @@ function createDBHandler (execlib, datafilterslib) {
   FakeDB.prototype.del = function (key, options, cb) {
     this.q.push(['del', [key, options, cb]]);
   };
-  FakeDB.prototype.transferCommands = function (db) {
+  FakeDB.prototype.upsert = function (key, processorfunc, defaultrecord) {
+    this.q.push(['upsert', [key, processorfunc, defaultrecord]]);
+  };
+  function fakeDBDrainer (db, dbh, cp) {
+    var command = cp[0],
+      args = cp[1];
+    if (db[command]) {
+      return db[command].apply(db,args);
+    }
+    if (dbh[command]) {
+      return dbh[command].apply(dbh,args);
+    }
+  }
+  FakeDB.prototype.transferCommands = function (db, dbh) {
     if (!this.q) {
       return;
     }
-    while (this.q.getFifoLength()) {
-      var cp = this.q.pop(),
-        command = cp[0],
-        args = cp[1];
-      db[command].apply(db,args);
-    }
+    this.q.drain(fakeDBDrainer.bind(null, db, dbh));
     this.q.destroy();
     this.q = null;
+    db = null;
+    dbh = null;
   };
 
 
@@ -65,8 +75,8 @@ function createDBHandler (execlib, datafilterslib) {
     var err;
     this.dbname = prophash.dbname;
     if (!this.dbname) {
+      err = new lib.Error('NO_DBNAME_IN_PROPERTYHASH','Property hash for LevelDBHandler misses the dbname property');
       if (prophash.starteddefer) {
-        err = new lib.Error('NO_DBNAME_IN_PROPERTYHASH','Property hash for LevelDBHandler misses the dbname property');
         prophash.starteddefer.reject(err);
         return;
       } else {
@@ -154,7 +164,7 @@ function createDBHandler (execlib, datafilterslib) {
     //this.del = q.nbind(this.db.del, this.db);
     this.del = properDeler.bind(this);
     if (_db && _db.transferCommands) {
-      _db.transferCommands(this.db);
+      _db.transferCommands(this.db, this);
     }
   };
   LevelDBHandler.prototype.createDB = function (prophash) {
@@ -210,13 +220,9 @@ function createDBHandler (execlib, datafilterslib) {
     try {
       procret = processorfunc(item, key);
     } catch(e) {
-      try {
+      console.error('Error in processorfunc', e.stack);
+      console.error(e);
       defer.reject(e);
-      } catch(e) {
-        console.error(e.stack);
-        console.error(e);
-      }
-      //console.log('processorfunc threw', e);
       return;
     }
     //if (procret && 'function' === typeof procret.then){

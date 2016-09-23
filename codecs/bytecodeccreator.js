@@ -1,4 +1,4 @@
-function createInt8Codec(execlib, numchecker) {
+function createByteCodec(execlib, numchecker) {
   return {
     encode: function(num) {
       num = numchecker(num);
@@ -6,15 +6,15 @@ function createInt8Codec(execlib, numchecker) {
         throw new lib('NUMBER_TOO_LARGE_FOR_8BITS', num);
       }
       var ret = new Buffer(1);
-      ret.writeUInt8(num);
+      ret[0] = num;
       return ret;
     },
     decode: function (buff) {
-      return buff.readUInt8(0);
+      return buff[0];
     },
     buffer: true,
     type: 'int8'
   };
 }
 
-module.exports = createInt8Codec;
+module.exports = createByteCodec;
