@@ -197,6 +197,7 @@ function createDBHandler (execlib, datafilterslib) {
 
   //  Upsert section //
   function putterAfterProcessor(handler, defer, key, item) {
+    var und;
     if (item === null) {
       defer.resolve(null);
       handler = null;
@@ -205,10 +206,17 @@ function createDBHandler (execlib, datafilterslib) {
       item = null;
       return;
     }
-    handler.put(key, item).then(
-      defer.resolve.bind(defer),
-      defer.reject.bind(defer)
-    );
+    if (item === und) {
+      handler.del(key).then(
+        defer.resolve.bind(defer),
+        defer.reject.bind(defer)
+      );
+    } else {
+      handler.put(key, item).then(
+        defer.resolve.bind(defer),
+        defer.reject.bind(defer)
+      );
+    }
     handler = null;
     defer = null;
     key = null;
