@@ -142,6 +142,18 @@ function createDBHandler (execlib) {
         return;
       }
       console.error(prophash.dbname, 'could not be started now', err);
+      if (prophash.maxretries) {
+        if (!prophash.currentretries) {
+          prophash.currentretries = 0;
+        }
+        prophash.currentretries++;
+        if (prophash.currentretries>prophash.maxretries) {
+          if (prophash.starteddefer) {
+            prophash.starteddefer.reject(new lib.Error('MAX_RETRIES_EXCEEDED'));
+          }
+          return;
+        }
+      }
       lib.runNext(this.createDB.bind(this, prophash), 1000);
       return;
     }
