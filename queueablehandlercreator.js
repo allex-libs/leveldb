@@ -28,7 +28,7 @@ function createQueueableHandler(execlib, leveldblib) {
     }
     var qitem = defer ? [operation, args, defer] : [operation, args];
     if (this._busy) {
-      this.q.push(qitem);
+      this.q.add(qitem);
       return;
     }
     var m = this[operation];
@@ -69,6 +69,7 @@ function createQueueableHandler(execlib, leveldblib) {
     var batch = this.db.batch();
     consume(_q, putter.bind(null, batch));
     batch.write(this.finish.bind(this, _q));
+    batch = null;
     return this._busy.promise;
   };
   QueueableDBHandler.consume = consume;

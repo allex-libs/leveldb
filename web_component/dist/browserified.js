@@ -5623,11 +5623,35 @@ function hasOwnProperty(obj, prop) {
 
 }).call(this,require('_process'),typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
 },{"./support/isBuffer":29,"_process":11,"inherits":8}],31:[function(require,module,exports){
-ALLEX.execSuite.libRegistry.register('allex_leveldblib',require('./index')(ALLEX));
+ALLEX.execSuite.libRegistry.register('allex_leveldblib',require('./libloader')(ALLEX, ALLEX.execSuite.libRegistry.register('allex_datafilterslib')));
 
-},{"./index":39}],32:[function(require,module,exports){
+},{"./libloader":46}],32:[function(require,module,exports){
 (function (Buffer){
-function createInt16Codec(execlib, numchecker) {
+function createByteCodec(execlib, numchecker) {
+  return {
+    encode: function(num) {
+      num = numchecker(num);
+      if (num>0xff) {
+        throw new lib('NUMBER_TOO_LARGE_FOR_8BITS', num);
+      }
+      var ret = new Buffer(1);
+      ret[0] = num;
+      return ret;
+    },
+    decode: function (buff) {
+      return buff[0];
+    },
+    buffer: true,
+    type: 'int8'
+  };
+}
+
+module.exports = createByteCodec;
+
+}).call(this,require("buffer").Buffer)
+},{"buffer":3}],33:[function(require,module,exports){
+(function (Buffer){
+function createInt16BECodec(execlib, numchecker) {
   return {
     encode: function(num) {
       num = numchecker(num);
@@ -5635,23 +5659,47 @@ function createInt16Codec(execlib, numchecker) {
         throw new lib('NUMBER_TOO_LARGE_FOR_16BITS', num);
       }
       var ret = new Buffer(2);
-      ret.writeUInt16BE(num);
+      ret.writeInt16BE(num);
       return ret;
     },
     decode: function (buff) {
-      return buff.readUInt16BE(0);
+      return buff.readInt16BE(0);
     },
     buffer: true,
     type: 'int16'
   };
 }
 
-module.exports = createInt16Codec;
+module.exports = createInt16BECodec;
 
 }).call(this,require("buffer").Buffer)
-},{"buffer":3}],33:[function(require,module,exports){
+},{"buffer":3}],34:[function(require,module,exports){
 (function (Buffer){
-function createInt32Codec(execlib, numchecker) {
+function createInt16LECodec(execlib, numchecker) {
+  return {
+    encode: function(num) {
+      num = numchecker(num);
+      if (num>0xffff) {
+        throw new lib('NUMBER_TOO_LARGE_FOR_16BITS', num);
+      }
+      var ret = new Buffer(2);
+      ret.writeInt16LE(num);
+      return ret;
+    },
+    decode: function (buff) {
+      return buff.readInt16LE(0);
+    },
+    buffer: true,
+    type: 'int16'
+  };
+}
+
+module.exports = createInt16LECodec;
+
+}).call(this,require("buffer").Buffer)
+},{"buffer":3}],35:[function(require,module,exports){
+(function (Buffer){
+function createInt32BECodec(execlib, numchecker) {
   'use strict';
   var lib = execlib.lib;
   return {
@@ -5661,21 +5709,47 @@ function createInt32Codec(execlib, numchecker) {
         throw new lib('NUMBER_TOO_LARGE_FOR_32BITS', num);
       }
       var ret = new Buffer(4);
-      ret.writeUInt32BE(num);
+      ret.writeInt32BE(num);
       return ret;
     },
     decode: function (buff) {
-      return buff.readUInt32BE(0);
+      return buff.readInt32BE(0);
     },
     buffer: true,
     type: 'int32'
   };
 }
 
-module.exports = createInt32Codec;
+module.exports = createInt32BECodec;
 
 }).call(this,require("buffer").Buffer)
-},{"buffer":3}],34:[function(require,module,exports){
+},{"buffer":3}],36:[function(require,module,exports){
+(function (Buffer){
+function createInt32LECodec(execlib, numchecker) {
+  'use strict';
+  var lib = execlib.lib;
+  return {
+    encode: function(num) {
+      num = numchecker(num);
+      if (num>0xffffffff) {
+        throw new lib('NUMBER_TOO_LARGE_FOR_32BITS', num);
+      }
+      var ret = new Buffer(4);
+      ret.writeInt32LE(num);
+      return ret;
+    },
+    decode: function (buff) {
+      return buff.readInt32LE(0);
+    },
+    buffer: true,
+    type: 'int32'
+  };
+}
+
+module.exports = createInt32LECodec;
+
+}).call(this,require("buffer").Buffer)
+},{"buffer":3}],37:[function(require,module,exports){
 (function (Buffer){
 function createInt64Codec(execlib) {
   return {
@@ -5704,31 +5778,107 @@ function createInt64Codec(execlib) {
 module.exports = createInt64Codec;
 
 }).call(this,require("buffer").Buffer)
-},{"buffer":3}],35:[function(require,module,exports){
+},{"buffer":3}],38:[function(require,module,exports){
 (function (Buffer){
-function createInt8Codec(execlib, numchecker) {
+function createUInt16BECodec(execlib, numchecker) {
   return {
     encode: function(num) {
       num = numchecker(num);
-      if (num>0xff) {
-        throw new lib('NUMBER_TOO_LARGE_FOR_8BITS', num);
+      if (num>0xffff) {
+        throw new lib('NUMBER_TOO_LARGE_FOR_16BITS', num);
       }
-      var ret = new Buffer(1);
-      ret.writeUInt8(num);
+      var ret = new Buffer(2);
+      ret.writeUInt16BE(num);
       return ret;
     },
     decode: function (buff) {
-      return buff.readUInt8(0);
+      return buff.readUInt16BE(0);
     },
     buffer: true,
-    type: 'int8'
+    type: 'int16'
   };
 }
 
-module.exports = createInt8Codec;
+module.exports = createUInt16BECodec;
 
 }).call(this,require("buffer").Buffer)
-},{"buffer":3}],36:[function(require,module,exports){
+},{"buffer":3}],39:[function(require,module,exports){
+(function (Buffer){
+function createUInt16LECodec(execlib, numchecker) {
+  return {
+    encode: function(num) {
+      num = numchecker(num);
+      if (num>0xffff) {
+        throw new lib('NUMBER_TOO_LARGE_FOR_16BITS', num);
+      }
+      var ret = new Buffer(2);
+      ret.writeUInt16LE(num);
+      return ret;
+    },
+    decode: function (buff) {
+      return buff.readUInt16LE(0);
+    },
+    buffer: true,
+    type: 'int16'
+  };
+}
+
+module.exports = createUInt16LECodec;
+
+}).call(this,require("buffer").Buffer)
+},{"buffer":3}],40:[function(require,module,exports){
+(function (Buffer){
+function createUInt32BECodec(execlib, numchecker) {
+  'use strict';
+  var lib = execlib.lib;
+  return {
+    encode: function(num) {
+      num = numchecker(num);
+      if (num>0xffffffff) {
+        throw new lib('NUMBER_TOO_LARGE_FOR_32BITS', num);
+      }
+      var ret = new Buffer(4);
+      ret.writeUInt32BE(num);
+      return ret;
+    },
+    decode: function (buff) {
+      return buff.readUInt32BE(0);
+    },
+    buffer: true,
+    type: 'int32'
+  };
+}
+
+module.exports = createUInt32BECodec;
+
+}).call(this,require("buffer").Buffer)
+},{"buffer":3}],41:[function(require,module,exports){
+(function (Buffer){
+function createUInt32LECodec(execlib, numchecker) {
+  'use strict';
+  var lib = execlib.lib;
+  return {
+    encode: function(num) {
+      num = numchecker(num);
+      if (num>0xffffffff) {
+        throw new lib('NUMBER_TOO_LARGE_FOR_32BITS', num);
+      }
+      var ret = new Buffer(4);
+      ret.writeUInt32LE(num);
+      return ret;
+    },
+    decode: function (buff) {
+      return buff.readUInt32LE(0);
+    },
+    buffer: true,
+    type: 'int32'
+  };
+}
+
+module.exports = createUInt32LECodec;
+
+}).call(this,require("buffer").Buffer)
+},{"buffer":3}],42:[function(require,module,exports){
 (function (Buffer){
 function createVerbatimDecoder(execlib) {
   'use strict';
@@ -5748,7 +5898,7 @@ function createVerbatimDecoder(execlib) {
 module.exports = createVerbatimDecoder;
 
 }).call(this,{"isBuffer":require("../../allex-toolbox-dev/node_modules/browserify/node_modules/insert-module-globals/node_modules/is-buffer/index.js")})
-},{"../../allex-toolbox-dev/node_modules/browserify/node_modules/insert-module-globals/node_modules/is-buffer/index.js":9}],37:[function(require,module,exports){
+},{"../../allex-toolbox-dev/node_modules/browserify/node_modules/insert-module-globals/node_modules/is-buffer/index.js":9}],43:[function(require,module,exports){
 function createDBArray(execlib, leveldblib) {
   'use strict';
   var lib = execlib.lib,
@@ -5796,6 +5946,7 @@ function createDBArray(execlib, leveldblib) {
     this.tail = null;
     this.head = null;
     console.log('DBArrayHandler destroyed');
+    QueueableHandler.prototype.destroy.call(this);
   };
   DBArrayHandler.prototype.setDB = function (db, prophash) {
     QueueableHandler.prototype.setDB.call(this, db, prophash);
@@ -5804,6 +5955,7 @@ function createDBArray(execlib, leveldblib) {
         this.onInitDone.bind(this, prophash)
       );
     }
+    prophash = null;
   };
   DBArrayHandler.prototype.onInitDone = function (prophash) {
     if (this.head === Infinity) {
@@ -5819,6 +5971,7 @@ function createDBArray(execlib, leveldblib) {
     if (prophash.dbarraystarteddefer) {
       prophash.dbarraystarteddefer.resolve(this);
     }
+    prophash = null;
   };
   DBArrayHandler.prototype.onInitTraversal = function (item) {
     if (this.head === null) {
@@ -5854,6 +6007,9 @@ function createDBArray(execlib, leveldblib) {
     } else {
       this.processQ(commandcontainer);
     }
+    puttername = null;
+    itemcontainer = null;
+    defer = null;
   };
   DBArrayHandler.prototype.push = function (item, defer) {
     if (!defer && defer!==0) {
@@ -5918,6 +6074,8 @@ function createDBArray(execlib, leveldblib) {
     d.promise.done(
       function (finalizer) {
         defer.resolve({items:items, finalizer:finalizer});
+        items = null;
+        defer = null;
       },
       //defer.resolve.bind(defer,items),
       defer.reject.bind(defer),
@@ -5933,6 +6091,8 @@ function createDBArray(execlib, leveldblib) {
       console.error(e.stack);
       console.error(e);
     }
+    howmany = null;
+    defer = null;
   };
   DBArrayHandler.prototype.pop = function (defer) {
     if (this.head === Infinity) {
@@ -5945,6 +6105,7 @@ function createDBArray(execlib, leveldblib) {
     } else {
       this.dbPerform('del', [--this.tail], defer);
     }
+    defer = null;
   };
   DBArrayHandler.prototype.manyPopperStartFromOne = function(container, item) {
     container.push(['del', [this.tail--]], 0);
@@ -5966,6 +6127,8 @@ function createDBArray(execlib, leveldblib) {
       this.finishAndContinueWith.bind(this, 'manyPopper', howmany, d),
       defer.reject.bind(defer)
     );
+    howmany = null;
+    defer = null;
   };
   DBArrayHandler.prototype.finishAndContinueWith = function(processorname, howmany, defer) {
     var _q = this.q;
@@ -5973,6 +6136,9 @@ function createDBArray(execlib, leveldblib) {
     this.finish();
     this.q = _q;
     this.doMany(processorname, howmany, defer);
+    processorname = null;
+    howmany = null;
+    defer = null;
   };
   
   return DBArrayHandler;
@@ -5980,13 +6146,13 @@ function createDBArray(execlib, leveldblib) {
 
 module.exports = createDBArray;
 
-},{}],38:[function(require,module,exports){
+},{}],44:[function(require,module,exports){
 var levelup = require('level-browserify'),
   child_process = require('child_process'),
   Path = require('path'),
   mkdirp = require('mkdirp');
 
-function createDBHandler (execlib) {
+function createDBHandler (execlib, datafilterslib) {
   'use strict';
   var lib = execlib.lib,
     q = lib.q,
@@ -6000,6 +6166,7 @@ function createDBHandler (execlib) {
       return;
     }
     defer.resolve(true);
+    defer = null;
   }
 
   function preparePath(path) {
@@ -6028,18 +6195,28 @@ function createDBHandler (execlib) {
   FakeDB.prototype.del = function (key, options, cb) {
     this.q.push(['del', [key, options, cb]]);
   };
-  FakeDB.prototype.transferCommands = function (db) {
+  FakeDB.prototype.upsert = function (key, processorfunc, defaultrecord) {
+    this.q.push(['upsert', [key, processorfunc, defaultrecord]]);
+  };
+  function fakeDBDrainer (db, dbh, cp) {
+    var command = cp[0],
+      args = cp[1];
+    if (db[command]) {
+      return db[command].apply(db,args);
+    }
+    if (dbh[command]) {
+      return dbh[command].apply(dbh,args);
+    }
+  }
+  FakeDB.prototype.transferCommands = function (db, dbh) {
     if (!this.q) {
       return;
     }
-    while (this.q.getFifoLength()) {
-      var cp = this.q.pop(),
-        command = cp[0],
-        args = cp[1];
-      db[command].apply(db,args);
-    }
+    this.q.drain(fakeDBDrainer.bind(null, db, dbh));
     this.q.destroy();
     this.q = null;
+    db = null;
+    dbh = null;
   };
 
 
@@ -6047,8 +6224,8 @@ function createDBHandler (execlib) {
     var err;
     this.dbname = prophash.dbname;
     if (!this.dbname) {
+      err = new lib.Error('NO_DBNAME_IN_PROPERTYHASH','Property hash for LevelDBHandler misses the dbname property');
       if (prophash.starteddefer) {
-        err = new lib.Error('NO_DBNAME_IN_PROPERTYHASH','Property hash for LevelDBHandler misses the dbname property');
         prophash.starteddefer.reject(err);
         return;
       } else {
@@ -6059,6 +6236,7 @@ function createDBHandler (execlib) {
     this.put = null;
     this.get = null;
     this.del = null;
+    this.opEvent = prophash.listenable ? new lib.HookCollection() : null;
     this.setDB(new FakeDB());
     if (prophash.initiallyemptydb) {
       console.log(prophash.dbname, 'initiallyemptydb!');
@@ -6068,13 +6246,17 @@ function createDBHandler (execlib) {
     }
   }
   LevelDBHandler.prototype.destroy = function () {
-    if (!this.db) {
-      return;
+    if (this.opEvent) {
+      this.opEvent.destroy();
     }
-    if (this.db.close) {
+    this.opEvent = null;
+    this.del = null;
+    this.get = null;
+    this.put = null;
+    if (this.db && this.db.close) {
       this.db.close();
     }
-    if (this.db.destroy) {
+    if (this.db && this.db.destroy) {
       this.db.destroy();
     }
     this.db = null;
@@ -6085,26 +6267,53 @@ function createDBHandler (execlib) {
     if (err) {
       defer.reject(err);
     } else {
-      defer.resolve([key, val]);
+      defer.resolve([key,val]);
+      if (this.opEvent) {
+        this.opEvent.fire(key, val);
+      }
     }
+    key = null;
+    val = null;
+    defer = null;
   }
-
-  function createProperPutter(db) {
-    return function (key, val, options) {
-      var d = q.defer();
-      db.put(key, val, options, properPutterCB.bind(null, key, val, d));
-      return d.promise;
-    };
+  function properPutter(key, val, options) {
+    var d = q.defer();
+    if (!this.db) {
+      return;
+    }
+    this.db.put(key, val, options, properPutterCB.bind(this, key, val, d));
+    return d.promise;
+  }
+  function properDelerCB(key, defer, err) {
+    if (err) {
+      defer.reject(err);
+    } else {
+      defer.resolve(key);
+      if (this.opEvent) {
+        this.opEvent.fire(key);
+      }
+    }
+    key = null;
+    defer = null;
+  }
+  function properDeler(key, options) {
+    var d = q.defer();
+    if (!this.db) {
+      return;
+    }
+    this.db.del(key, properDelerCB.bind(this, key, d));
+    return d.promise;
   }
   LevelDBHandler.prototype.setDB = function (db, prophash) {
     var _db = this.db;
     this.db = db;
     //this.put = q.nbind(this.db.put, this.db);
-    this.put = createProperPutter(this.db);
+    this.put = properPutter.bind(this);
     this.get = q.nbind(this.db.get, this.db);
-    this.del = q.nbind(this.db.del, this.db);
+    //this.del = q.nbind(this.db.del, this.db);
+    this.del = properDeler.bind(this);
     if (_db && _db.transferCommands) {
-      _db.transferCommands(this.db);
+      _db.transferCommands(this.db, this);
     }
   };
   LevelDBHandler.prototype.createDB = function (prophash) {
@@ -6147,35 +6356,32 @@ function createDBHandler (execlib) {
     }
   };
 
-  function resultReporter(result) {
-    return q(result);
-  }
-
-  function errorReporter(deflt, error) {
-    if (error.notFound) {
-      return q(deflt);
-    } else {
-      return q.reject(error);
-    }
-  };
-
-  LevelDBHandler.prototype.getWDefault = function (key, deflt) {
-    return this.get(key).then(
-      resultReporter,
-      errorReporter.bind(null, deflt)
-    );
-  };
-
   //  Upsert section //
   function putterAfterProcessor(handler, defer, key, item) {
+    var und;
     if (item === null) {
       defer.resolve(null);
+      handler = null;
+      defer = null;
+      key = null;
+      item = null;
       return;
     }
-    handler.put(key, item).then(
-      defer.resolve.bind(defer),
-      defer.reject.bind(defer)
-    );
+    if (item === und) {
+      handler.del(key).then(
+        defer.resolve.bind(defer),
+        defer.reject.bind(defer)
+      );
+    } else {
+      handler.put(key, item).then(
+        defer.resolve.bind(defer),
+        defer.reject.bind(defer)
+      );
+    }
+    handler = null;
+    defer = null;
+    key = null;
+    item = null;
   }
   function offerrerToProcessor(handler, defer, key, processorfunc, item) {
     //console.log('offerrerToProcessor', key, '=>', item);
@@ -6183,13 +6389,9 @@ function createDBHandler (execlib) {
     try {
       procret = processorfunc(item, key);
     } catch(e) {
-      try {
+      console.error('Error in processorfunc', e.stack);
+      console.error(e);
       defer.reject(e);
-      } catch(e) {
-        console.error(e.stack);
-        console.error(e);
-      }
-      //console.log('processorfunc threw', e);
       return;
     }
     //if (procret && 'function' === typeof procret.then){
@@ -6216,7 +6418,7 @@ function createDBHandler (execlib) {
   function errorOfferrerToProcessor(handler, defer, key, processorfunc, defaultrecord, error) {
     if (error.notFound) {
       //console.log('record not found for', key);
-      offerrerToProcessor(handler, defer, key, processorfunc, defaultEvaluator(defaultrecord, defer) || null);
+      offerrerToProcessor(handler, defer, key, processorfunc, defaultEvaluator(defaultrecord, defer));
     } else {
       console.error('Error in getting data for upsert!', error);
       defer.reject(error);
@@ -6247,7 +6449,7 @@ function createDBHandler (execlib) {
     return item+amount;
   }
   function incer(fieldindex, amount, options, record) {
-    if (!lib.isArray(record)) {
+    if (fieldindex!==null && !lib.isArray(record)) {
       var msg = 'Received record '+record+'. Did you specify a default record for inc?';
       console.error(msg);
       throw new lib.Error('INVALID_RECORD', msg);
@@ -6257,7 +6459,10 @@ function createDBHandler (execlib) {
       should = options.criterionfunction(record, amount);
     }
     if (should) {
-      return record.map(incmapper.bind(null, fieldindex, options.dec ? -amount : amount));
+      if (lib.isArray(record)) {
+        return record.map(incmapper.bind(null, fieldindex, options.dec ? -amount : amount));
+      }
+      return options.dec ? record-amount : record+amount;
     } else {
       return null;
     }
@@ -6284,6 +6489,8 @@ function createDBHandler (execlib) {
     } else {
       defer.reject(error);
     }
+    defaultval = null;
+    defer = null;
   }
 
   LevelDBHandler.prototype.safeGet = function (key, defaultval) {
@@ -6294,6 +6501,8 @@ function createDBHandler (execlib) {
     );
     return d.promise;
   };
+  LevelDBHandler.prototype.getWDefault = LevelDBHandler.prototype.safeGet;
+
 
   // end of safe get //
 
@@ -6307,22 +6516,74 @@ function createDBHandler (execlib) {
       cb(item, stream);
     }
   }
-  function streamEnder(defer, stream) {
-    stream.removeAllListeners();
-    defer.resolve(true);
+  function datafilterer (filter, keyfilter) {
+    var ret = function (item) {
+      if (filter && !filter.isOK(item.value)) {
+        return false;
+      }
+      if (keyfilter && !keyfilter.isOK(item.key)) {
+        return false;
+      }
+      return true;
+    }
+    ret.destroy = function () {
+      filter = null;
+      keyfilter = null;
+      if (ret) {
+        ret.destroy = null;
+      }
+      ret = null;
+    };
+    return ret;
   }
   LevelDBHandler.prototype.traverse = function (cb, options) {
     var stream = this.getReadStream(options),
-      d = (options ? options.defer : null) || q.defer();
+      d = (options ? options.defer : null) || q.defer(),
+      destroyables = [stream],
+      _lisa = lib.isArray,
+      _lada = lib.arryDestroyAll;
     switch (typeof (options ? options.filter : void 0)) {
       case 'function':
         stream.on('data', functionFilterStreamTraverser.bind(null, options.filter, stream, cb));
+        break;
+      case 'object':
+        try {
+          destroyables.push(
+            datafilterer(
+              datafilterslib.createFromDescriptor(options.filter),
+              datafilterslib.createFromDescriptor(options.keyfilter)
+            )
+          );
+          stream.on('data', functionFilterStreamTraverser.bind(
+            null, 
+            destroyables[1],
+            stream,
+            cb));
+        } catch (e) {
+          console.error(e.stack);
+          console.error(e);
+          stream.on('data', streamTraverser.bind(null, stream, cb));
+        }
         break;
       default:
         stream.on('data', streamTraverser.bind(null, stream, cb));
         break;
     }
-    stream.on('end', streamEnder.bind(null, d, stream));
+    //stream.on('end', streamEnder.bind(null, d, stream, destroyables));
+    stream.on('end', function streamEnder() {
+      stream.removeAllListeners();
+      if (_lisa(destroyables) && destroyables.length>0) {
+        _lada(destroyables);
+      }
+      d.resolve(true);
+      d = null;
+      stream = null;
+      destroyables = null;
+      options = null;
+      cb = null;
+      _lisa = null;
+      _lada = null;
+    });
     return d.promise;
   };
   function pusher(container, item) {
@@ -6337,6 +6598,8 @@ function createDBHandler (execlib) {
   LevelDBHandler.prototype.streamInto = function (defer, options) {
     var ret = this.traverse(notifier.bind(null, defer), options);
     ret.then(defer.resolve.bind(defer));
+    defer = null;
+    options = null;
     return ret;
   }
   LevelDBHandler.prototype.getReadStream = function (options) {
@@ -6362,16 +6625,173 @@ function createDBHandler (execlib) {
 
 module.exports = createDBHandler;
 
-},{"child_process":1,"level-browserify":48,"mkdirp":82,"path":10}],39:[function(require,module,exports){
-(function (Buffer){
-var levelup = require('level-browserify');
+},{"child_process":1,"level-browserify":55,"mkdirp":89,"path":10}],45:[function(require,module,exports){
+function createHookableUserSessionMixin (execlib) {
+  'use strict';
 
-function createLib(execlib) {
+  var lib = execlib.lib,
+    q = lib.q;
+
+  function HookableUserSessionMixin (leveldb) {
+    this.leveldb = leveldb;
+    this.dbkeys = null;
+    this.dbOpListener = null;
+  }
+
+  HookableUserSessionMixin.addMethods = function (UserSession) {
+    lib.inheritMethods (UserSession, HookableUserSessionMixin,
+      'hook',
+      'onScan',
+      'postScan',
+      '_unhook',
+      'unhook',
+      'stopListening',
+      'onLevelDBDataChanged'
+    );
+  };
+
+  HookableUserSessionMixin.ALL_KEYS = '***';
+
+  HookableUserSessionMixin.prototype.destroy = function () {
+    this.dbkeys = null;
+    if (this.dbOpListener) {
+      this.dbOpListener.destroy();
+    }
+    this.dbOpListener = null;
+    this.leveldb = null;
+  };
+
+  HookableUserSessionMixin.prototype.hook = function (hookobj, defer) {
+    var doscan = hookobj.scan, dbkeys = hookobj.accounts, checkforlistener = false, d, pser;
+    if (!lib.isArray(dbkeys)) {
+      defer.resolve(true);
+    }
+    if (dbkeys.indexOf(HookableUserSessionMixin.ALL_KEYS) >= 0) {
+      this.dbkeys = true;
+      checkforlistener = true;
+    } else {
+      this.dbkeys = this.dbkeys || [];
+      lib.arryOperations.appendNonExistingItems(this.dbkeys, dbkeys);
+      checkforlistener = this.dbkeys.length>0;
+    }
+    if (checkforlistener) {
+      if (doscan) {
+        pser = this.postScan.bind(this, defer, checkforlistener);
+        this.leveldb.traverse(this.onScan.bind(this), {}).then(
+          pser,
+          pser
+        );
+      } else {
+        this.postScan(defer, checkforlistener);
+      }
+    }
+    defer = null;
+  };
+
+  HookableUserSessionMixin.prototype.onScan = function (accounthash) {
+    console.log('onScan', accounthash);
+    this.onLevelDBDataChanged(accounthash.key, accounthash.value);
+  };
+
+  HookableUserSessionMixin.prototype.postScan = function (defer, checkforlistener) {
+    if (checkforlistener) {
+      if ( !this.dbOpListener && this.leveldb && this.leveldb.opEvent ) {
+        this.dbOpListener = this.leveldb.opEvent.attach(this.onLevelDBDataChanged.bind(this));
+      }
+    } else {
+      this.stopListening();
+    }
+    defer.resolve(true);
+    defer = null;
+  };
+
+  HookableUserSessionMixin.prototype._unhook = function (accountname){
+    var ind;
+    if (!this.dbkeys) {
+      return;
+    }
+    if (this.dbkeys === true) {
+      if (accountname === HookableUserSessionMixin.ALL_KEYS) {
+        this.stopListening();
+      }
+      return;
+    }
+    ind = this.dbkeys.indexOf(accountname);
+    if (ind >= 0) {
+      this.dbkeys.splice(ind, 1);
+    }
+  };
+
+  HookableUserSessionMixin.prototype.unhook = function (dbkeys, defer) {
+    if (!lib.isArray(dbkeys)) {
+      this.stopListening();
+      defer.resolve(true);
+      defer = null;
+      return;
+    }
+    dbkeys.forEach (this._unhook.bind(this));
+    if (!this.dbkeys) {
+      this.stopListening();
+    }
+    defer.resolve('ok');
+    defer = null;
+  };
+
+  HookableUserSessionMixin.prototype.stopListening = function () {
+    if (this.dbOpListener) {
+      this.dbOpListener.destroy();
+    }
+    this.dbOpListener = null;
+    this.dbkeys = null;
+  };
+
+  HookableUserSessionMixin.prototype.onLevelDBDataChanged = function (key, value) {
+    this.sendOOB('l',[key, value]);
+  };
+
+  HookableUserSessionMixin.__methodDescriptors = {
+    unhook: [{
+      title: 'Unhook',
+      type: 'array',
+      items: {
+        'type': 'string'
+      },
+      required: false
+    }],
+    hook : [{
+      title: 'Hook',
+      type: 'object',
+      properties : {
+        scan : {
+          type : 'boolean',
+        },
+        accounts : {
+          type : 'array',
+          items : {
+            type : 'string'
+          }
+        }
+      },
+      required: ['accounts'],
+      additionalProperties : false
+    }]
+  };
+
+  return HookableUserSessionMixin;
+
+};
+
+module.exports = createHookableUserSessionMixin;
+
+
+},{}],46:[function(require,module,exports){
+(function (Buffer){
+function realCreator(execlib, datafilterslib) {
   'use strict';
   var lib = execlib.lib,
     q = lib.q,
     qlib = lib.qlib,
-    LevelDBHandler = require('./dbhandlercreator')(execlib);
+    LevelDBHandler = require('./dbhandlercreator')(execlib, datafilterslib);
 
   function creator(hash) {
     return new LevelDBHandler(hash);
@@ -6394,9 +6814,15 @@ function createLib(execlib) {
     LevelDBHandler: LevelDBHandler,
     NullCodec:_nullcodec,
     VerbatimDecoder: require('./codecs/verbatimdecodercreator')(execlib),
-    Int8Codec: require('./codecs/int8codeccreator')(execlib, numchecker),
-    Int16Codec: require('./codecs/int16codeccreator')(execlib, numchecker),
-    Int32Codec: require('./codecs/int32codeccreator')(execlib, numchecker),
+    ByteCodec: require('./codecs/bytecodeccreator')(execlib, numchecker),
+    UInt16LECodec: require('./codecs/uint16lecodeccreator')(execlib, numchecker),
+    UInt16BECodec: require('./codecs/uint16becodeccreator')(execlib, numchecker),
+    Int16LECodec: require('./codecs/int16lecodeccreator')(execlib, numchecker),
+    Int16BECodec: require('./codecs/int16becodeccreator')(execlib, numchecker),
+    UInt32LECodec: require('./codecs/uint32lecodeccreator')(execlib, numchecker),
+    UInt32BECodec: require('./codecs/uint32becodeccreator')(execlib, numchecker),
+    Int32LECodec: require('./codecs/int32lecodeccreator')(execlib, numchecker),
+    Int32BECodec: require('./codecs/int32becodeccreator')(execlib, numchecker),
     Int64Codec: require('./codecs/int64codeccreator')(execlib, numchecker)
   };
 
@@ -6407,19 +6833,19 @@ function createLib(execlib) {
   ret.KnownLengthInsertJob = require('./transactions/knownlengthinsertjobcreator')(execlib, qlib.JobBase);
   ret.FiniteLengthInsertJob = require('./transactions/finitelengthinsertjobcreator')(execlib, ret.KnownLengthInsertJob);
   ret.ChainedOperationsJob = require('./transactions/chainedoperationsjobcreator')(execlib, qlib.JobBase);
-  ret.ServiceUserMixin = require('./serviceusermixincreator')(execlib);
+  ret.ServiceUserMixin = require('./serviceusermixincreator')(execlib, datafilterslib);
+  ret.HookableUserSessionMixin = require('./hookableusersessionmixincreator')(execlib);
   ret.streamInSink = require('./streaminsinkcreator')(execlib);
   ret.enhanceSink = function(sinkklass) {
     sinkklass.prototype.ClientUser.prototype.__methodDescriptors.resumeLevelDBStream = require('./resumeleveldbstreamdescriptor');
   }
-
   return ret;
 }
 
-module.exports = createLib;
+module.exports = realCreator;
 
 }).call(this,require("buffer").Buffer)
-},{"./codecs/int16codeccreator":32,"./codecs/int32codeccreator":33,"./codecs/int64codeccreator":34,"./codecs/int8codeccreator":35,"./codecs/verbatimdecodercreator":36,"./dbarrayhandlercreator":37,"./dbhandlercreator":38,"./numcheckercreator":86,"./queueablehandlercreator":87,"./queueablemixincreator":88,"./resumeleveldbstreamdescriptor":89,"./serviceusermixincreator":90,"./shift2pushercreator":91,"./streaminsinkcreator":92,"./transactions/chainedoperationsjobcreator":93,"./transactions/finitelengthinsertjobcreator":94,"./transactions/knownlengthinsertjobcreator":95,"buffer":3,"level-browserify":48}],40:[function(require,module,exports){
+},{"./codecs/bytecodeccreator":32,"./codecs/int16becodeccreator":33,"./codecs/int16lecodeccreator":34,"./codecs/int32becodeccreator":35,"./codecs/int32lecodeccreator":36,"./codecs/int64codeccreator":37,"./codecs/uint16becodeccreator":38,"./codecs/uint16lecodeccreator":39,"./codecs/uint32becodeccreator":40,"./codecs/uint32lecodeccreator":41,"./codecs/verbatimdecodercreator":42,"./dbarrayhandlercreator":43,"./dbhandlercreator":44,"./hookableusersessionmixincreator":45,"./numcheckercreator":93,"./queueablehandlercreator":94,"./queueablemixincreator":95,"./resumeleveldbstreamdescriptor":96,"./serviceusermixincreator":97,"./shift2pushercreator":98,"./streaminsinkcreator":99,"./transactions/chainedoperationsjobcreator":100,"./transactions/finitelengthinsertjobcreator":101,"./transactions/knownlengthinsertjobcreator":102,"buffer":3}],47:[function(require,module,exports){
 (function (process){
 /* Copyright (c) 2013 Rod Vagg, MIT License */
 
@@ -6511,7 +6937,7 @@ AbstractChainedBatch.prototype.write = function (options, callback) {
 module.exports = AbstractChainedBatch
 
 }).call(this,require('_process'))
-},{"_process":11}],41:[function(require,module,exports){
+},{"_process":11}],48:[function(require,module,exports){
 (function (process){
 /* Copyright (c) 2013 Rod Vagg, MIT License */
 
@@ -6564,7 +6990,7 @@ AbstractIterator.prototype.end = function (callback) {
 module.exports = AbstractIterator
 
 }).call(this,require('_process'))
-},{"_process":11}],42:[function(require,module,exports){
+},{"_process":11}],49:[function(require,module,exports){
 (function (Buffer,process){
 /* Copyright (c) 2013 Rod Vagg, MIT License */
 
@@ -6840,13 +7266,13 @@ AbstractLevelDOWN.prototype._checkKey = function (obj, type) {
 module.exports = AbstractLevelDOWN
 
 }).call(this,{"isBuffer":require("../../../allex-toolbox-dev/node_modules/browserify/node_modules/insert-module-globals/node_modules/is-buffer/index.js")},require('_process'))
-},{"../../../allex-toolbox-dev/node_modules/browserify/node_modules/insert-module-globals/node_modules/is-buffer/index.js":9,"./abstract-chained-batch":40,"./abstract-iterator":41,"_process":11,"xtend":45}],43:[function(require,module,exports){
+},{"../../../allex-toolbox-dev/node_modules/browserify/node_modules/insert-module-globals/node_modules/is-buffer/index.js":9,"./abstract-chained-batch":47,"./abstract-iterator":48,"_process":11,"xtend":52}],50:[function(require,module,exports){
 exports.AbstractLevelDOWN    = require('./abstract-leveldown')
 exports.AbstractIterator     = require('./abstract-iterator')
 exports.AbstractChainedBatch = require('./abstract-chained-batch')
 exports.isLevelDOWN          = require('./is-leveldown')
 
-},{"./abstract-chained-batch":40,"./abstract-iterator":41,"./abstract-leveldown":42,"./is-leveldown":44}],44:[function(require,module,exports){
+},{"./abstract-chained-batch":47,"./abstract-iterator":48,"./abstract-leveldown":49,"./is-leveldown":51}],51:[function(require,module,exports){
 var AbstractLevelDOWN = require('./abstract-leveldown')
 
 function isLevelDOWN (db) {
@@ -6862,7 +7288,7 @@ function isLevelDOWN (db) {
 
 module.exports = isLevelDOWN
 
-},{"./abstract-leveldown":42}],45:[function(require,module,exports){
+},{"./abstract-leveldown":49}],52:[function(require,module,exports){
 module.exports = extend
 
 var hasOwnProperty = Object.prototype.hasOwnProperty;
@@ -6883,7 +7309,7 @@ function extend() {
     return target
 }
 
-},{}],46:[function(require,module,exports){
+},{}],53:[function(require,module,exports){
 /*global window:false, self:false, define:false, module:false */
 
 /**
@@ -8276,7 +8702,7 @@ function extend() {
 
 }, this);
 
-},{}],47:[function(require,module,exports){
+},{}],54:[function(require,module,exports){
 var Buffer = require('buffer').Buffer;
 
 module.exports = isBuffer;
@@ -8286,7 +8712,7 @@ function isBuffer (o) {
     || /\[object (.+Array|Array.+)\]/.test(Object.prototype.toString.call(o));
 }
 
-},{"buffer":3}],48:[function(require,module,exports){
+},{"buffer":3}],55:[function(require,module,exports){
 
 var Leveljs = require('level-js')
 
@@ -8294,7 +8720,7 @@ module.exports = require('level-packager')(function(l) {
   return new Leveljs(l)
 })
 
-},{"level-js":49,"level-packager":51}],49:[function(require,module,exports){
+},{"level-js":56,"level-packager":58}],56:[function(require,module,exports){
 (function (Buffer){
 module.exports = Level
 
@@ -8472,7 +8898,7 @@ var checkKeyValue = Level.prototype._checkKeyValue = function (obj, type) {
 }
 
 }).call(this,require("buffer").Buffer)
-},{"./iterator":50,"abstract-leveldown":43,"buffer":3,"idb-wrapper":46,"isbuffer":47,"typedarray-to-buffer":83,"util":30,"xtend":85}],50:[function(require,module,exports){
+},{"./iterator":57,"abstract-leveldown":50,"buffer":3,"idb-wrapper":53,"isbuffer":54,"typedarray-to-buffer":90,"util":30,"xtend":92}],57:[function(require,module,exports){
 var util = require('util')
 var AbstractIterator  = require('abstract-leveldown').AbstractIterator
 var ltgt = require('ltgt')
@@ -8546,7 +8972,7 @@ Iterator.prototype._next = function (callback) {
   this.callback = callback
 }
 
-},{"abstract-leveldown":43,"ltgt":81,"util":30}],51:[function(require,module,exports){
+},{"abstract-leveldown":50,"ltgt":88,"util":30}],58:[function(require,module,exports){
 const levelup = require('levelup')
 
 function packager (leveldown) {
@@ -8574,7 +9000,7 @@ function packager (leveldown) {
 
 module.exports = packager
 
-},{"levelup":53}],52:[function(require,module,exports){
+},{"levelup":60}],59:[function(require,module,exports){
 /* Copyright (c) 2012-2016 LevelUP contributors
  * See list at <https://github.com/level/levelup#contributing>
  * MIT License
@@ -8659,7 +9085,7 @@ Batch.prototype.write = function (callback) {
 
 module.exports = Batch
 
-},{"./util":54,"level-errors":64}],53:[function(require,module,exports){
+},{"./util":61,"level-errors":71}],60:[function(require,module,exports){
 (function (process){
 /* Copyright (c) 2012-2016 LevelUP contributors
  * See list at <https://github.com/level/levelup#contributing>
@@ -9062,7 +9488,7 @@ module.exports.repair  = deprecate(
 
 
 }).call(this,require('_process'))
-},{"./batch":52,"./util":54,"_process":11,"deferred-leveldown":56,"events":7,"level-codec":62,"level-errors":64,"level-iterator-stream":68,"prr":79,"util":30,"xtend":85}],54:[function(require,module,exports){
+},{"./batch":59,"./util":61,"_process":11,"deferred-leveldown":63,"events":7,"level-codec":69,"level-errors":71,"level-iterator-stream":75,"prr":86,"util":30,"xtend":92}],61:[function(require,module,exports){
 /* Copyright (c) 2012-2016 LevelUP contributors
  * See list at <https://github.com/level/levelup#contributing>
  * MIT License
@@ -9141,7 +9567,7 @@ module.exports = {
   , isDefined       : isDefined
 }
 
-},{"../package.json":80,"level-errors":64,"leveldown":2,"leveldown/package":2,"semver":2,"util":30,"xtend":85}],55:[function(require,module,exports){
+},{"../package.json":87,"level-errors":71,"leveldown":2,"leveldown/package":2,"semver":2,"util":30,"xtend":92}],62:[function(require,module,exports){
 var util = require('util')
   , AbstractIterator = require('abstract-leveldown').AbstractIterator
 
@@ -9177,7 +9603,7 @@ DeferredIterator.prototype._operation = function (method, args) {
 
 module.exports = DeferredIterator;
 
-},{"abstract-leveldown":60,"util":30}],56:[function(require,module,exports){
+},{"abstract-leveldown":67,"util":30}],63:[function(require,module,exports){
 (function (Buffer,process){
 var util              = require('util')
   , AbstractLevelDOWN = require('abstract-leveldown').AbstractLevelDOWN
@@ -9237,7 +9663,7 @@ module.exports                  = DeferredLevelDOWN
 module.exports.DeferredIterator = DeferredIterator
 
 }).call(this,{"isBuffer":require("../../../../../allex-toolbox-dev/node_modules/browserify/node_modules/insert-module-globals/node_modules/is-buffer/index.js")},require('_process'))
-},{"../../../../../allex-toolbox-dev/node_modules/browserify/node_modules/insert-module-globals/node_modules/is-buffer/index.js":9,"./deferred-iterator":55,"_process":11,"abstract-leveldown":60,"util":30}],57:[function(require,module,exports){
+},{"../../../../../allex-toolbox-dev/node_modules/browserify/node_modules/insert-module-globals/node_modules/is-buffer/index.js":9,"./deferred-iterator":62,"_process":11,"abstract-leveldown":67,"util":30}],64:[function(require,module,exports){
 (function (process){
 /* Copyright (c) 2013 Rod Vagg, MIT License */
 
@@ -9320,9 +9746,9 @@ AbstractChainedBatch.prototype.write = function (options, callback) {
 
 module.exports = AbstractChainedBatch
 }).call(this,require('_process'))
-},{"_process":11}],58:[function(require,module,exports){
-arguments[4][41][0].apply(exports,arguments)
-},{"_process":11,"dup":41}],59:[function(require,module,exports){
+},{"_process":11}],65:[function(require,module,exports){
+arguments[4][48][0].apply(exports,arguments)
+},{"_process":11,"dup":48}],66:[function(require,module,exports){
 (function (Buffer,process){
 /* Copyright (c) 2013 Rod Vagg, MIT License */
 
@@ -9598,11 +10024,11 @@ AbstractLevelDOWN.prototype._checkKey = function (obj, type) {
 module.exports = AbstractLevelDOWN
 
 }).call(this,{"isBuffer":require("../../../../../../../allex-toolbox-dev/node_modules/browserify/node_modules/insert-module-globals/node_modules/is-buffer/index.js")},require('_process'))
-},{"../../../../../../../allex-toolbox-dev/node_modules/browserify/node_modules/insert-module-globals/node_modules/is-buffer/index.js":9,"./abstract-chained-batch":57,"./abstract-iterator":58,"_process":11,"xtend":85}],60:[function(require,module,exports){
-arguments[4][43][0].apply(exports,arguments)
-},{"./abstract-chained-batch":57,"./abstract-iterator":58,"./abstract-leveldown":59,"./is-leveldown":61,"dup":43}],61:[function(require,module,exports){
-arguments[4][44][0].apply(exports,arguments)
-},{"./abstract-leveldown":59,"dup":44}],62:[function(require,module,exports){
+},{"../../../../../../../allex-toolbox-dev/node_modules/browserify/node_modules/insert-module-globals/node_modules/is-buffer/index.js":9,"./abstract-chained-batch":64,"./abstract-iterator":65,"_process":11,"xtend":92}],67:[function(require,module,exports){
+arguments[4][50][0].apply(exports,arguments)
+},{"./abstract-chained-batch":64,"./abstract-iterator":65,"./abstract-leveldown":66,"./is-leveldown":68,"dup":50}],68:[function(require,module,exports){
+arguments[4][51][0].apply(exports,arguments)
+},{"./abstract-leveldown":66,"dup":51}],69:[function(require,module,exports){
 var encodings = require('./lib/encodings');
 
 module.exports = Codec;
@@ -9710,7 +10136,7 @@ Codec.prototype.valueAsBuffer = function(opts){
 };
 
 
-},{"./lib/encodings":63}],63:[function(require,module,exports){
+},{"./lib/encodings":70}],70:[function(require,module,exports){
 (function (Buffer){
 
 exports.utf8 = exports['utf-8'] = {
@@ -9790,7 +10216,7 @@ function isBinary(data){
 
 
 }).call(this,require("buffer").Buffer)
-},{"buffer":3}],64:[function(require,module,exports){
+},{"buffer":3}],71:[function(require,module,exports){
 /* Copyright (c) 2012-2015 LevelUP contributors
  * See list at <https://github.com/rvagg/node-levelup#contributing>
  * MIT License
@@ -9814,7 +10240,7 @@ module.exports = {
   , EncodingError       : createError('EncodingError', LevelUPError)
 }
 
-},{"errno":66}],65:[function(require,module,exports){
+},{"errno":73}],72:[function(require,module,exports){
 var prr = require('prr')
 
 function init (type, message, cause) {
@@ -9871,7 +10297,7 @@ module.exports = function (errno) {
   }
 }
 
-},{"prr":67}],66:[function(require,module,exports){
+},{"prr":74}],73:[function(require,module,exports){
 var all = module.exports.all = [
   {
     errno: -2,
@@ -10186,7 +10612,7 @@ all.forEach(function (error) {
 module.exports.custom = require('./custom')(module.exports)
 module.exports.create = module.exports.custom.createError
 
-},{"./custom":65}],67:[function(require,module,exports){
+},{"./custom":72}],74:[function(require,module,exports){
 /*!
   * prr
   * (c) 2013 Rod Vagg <rod@vagg.org>
@@ -10250,7 +10676,7 @@ module.exports.create = module.exports.custom.createError
 
   return prr
 })
-},{}],68:[function(require,module,exports){
+},{}],75:[function(require,module,exports){
 var inherits = require('inherits');
 var Readable = require('readable-stream').Readable;
 var extend = require('xtend');
@@ -10308,9 +10734,9 @@ ReadStream.prototype._cleanup = function(){
 };
 
 
-},{"inherits":69,"level-errors":64,"readable-stream":78,"xtend":85}],69:[function(require,module,exports){
+},{"inherits":76,"level-errors":71,"readable-stream":85,"xtend":92}],76:[function(require,module,exports){
 arguments[4][8][0].apply(exports,arguments)
-},{"dup":8}],70:[function(require,module,exports){
+},{"dup":8}],77:[function(require,module,exports){
 (function (process){
 // Copyright Joyent, Inc. and other Node contributors.
 //
@@ -10403,7 +10829,7 @@ function forEach (xs, f) {
 }
 
 }).call(this,require('_process'))
-},{"./_stream_readable":72,"./_stream_writable":74,"_process":11,"core-util-is":75,"inherits":69}],71:[function(require,module,exports){
+},{"./_stream_readable":79,"./_stream_writable":81,"_process":11,"core-util-is":82,"inherits":76}],78:[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -10451,7 +10877,7 @@ PassThrough.prototype._transform = function(chunk, encoding, cb) {
   cb(null, chunk);
 };
 
-},{"./_stream_transform":73,"core-util-is":75,"inherits":69}],72:[function(require,module,exports){
+},{"./_stream_transform":80,"core-util-is":82,"inherits":76}],79:[function(require,module,exports){
 (function (process){
 // Copyright Joyent, Inc. and other Node contributors.
 //
@@ -11406,7 +11832,7 @@ function indexOf (xs, x) {
 }
 
 }).call(this,require('_process'))
-},{"./_stream_duplex":70,"_process":11,"buffer":3,"core-util-is":75,"events":7,"inherits":69,"isarray":76,"stream":27,"string_decoder/":77,"util":2}],73:[function(require,module,exports){
+},{"./_stream_duplex":77,"_process":11,"buffer":3,"core-util-is":82,"events":7,"inherits":76,"isarray":83,"stream":27,"string_decoder/":84,"util":2}],80:[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -11617,7 +12043,7 @@ function done(stream, er) {
   return stream.push(null);
 }
 
-},{"./_stream_duplex":70,"core-util-is":75,"inherits":69}],74:[function(require,module,exports){
+},{"./_stream_duplex":77,"core-util-is":82,"inherits":76}],81:[function(require,module,exports){
 (function (process){
 // Copyright Joyent, Inc. and other Node contributors.
 //
@@ -12098,7 +12524,7 @@ function endWritable(stream, state, cb) {
 }
 
 }).call(this,require('_process'))
-},{"./_stream_duplex":70,"_process":11,"buffer":3,"core-util-is":75,"inherits":69,"stream":27}],75:[function(require,module,exports){
+},{"./_stream_duplex":77,"_process":11,"buffer":3,"core-util-is":82,"inherits":76,"stream":27}],82:[function(require,module,exports){
 (function (Buffer){
 // Copyright Joyent, Inc. and other Node contributors.
 //
@@ -12209,14 +12635,14 @@ function objectToString(o) {
 }
 
 }).call(this,{"isBuffer":require("../../../../../../../../../../allex-toolbox-dev/node_modules/browserify/node_modules/insert-module-globals/node_modules/is-buffer/index.js")})
-},{"../../../../../../../../../../allex-toolbox-dev/node_modules/browserify/node_modules/insert-module-globals/node_modules/is-buffer/index.js":9}],76:[function(require,module,exports){
+},{"../../../../../../../../../../allex-toolbox-dev/node_modules/browserify/node_modules/insert-module-globals/node_modules/is-buffer/index.js":9}],83:[function(require,module,exports){
 module.exports = Array.isArray || function (arr) {
   return Object.prototype.toString.call(arr) == '[object Array]';
 };
 
-},{}],77:[function(require,module,exports){
+},{}],84:[function(require,module,exports){
 arguments[4][28][0].apply(exports,arguments)
-},{"buffer":3,"dup":28}],78:[function(require,module,exports){
+},{"buffer":3,"dup":28}],85:[function(require,module,exports){
 (function (process){
 exports = module.exports = require('./lib/_stream_readable.js');
 exports.Stream = require('stream');
@@ -12230,9 +12656,9 @@ if (!process.browser && process.env.READABLE_STREAM === 'disable') {
 }
 
 }).call(this,require('_process'))
-},{"./lib/_stream_duplex.js":70,"./lib/_stream_passthrough.js":71,"./lib/_stream_readable.js":72,"./lib/_stream_transform.js":73,"./lib/_stream_writable.js":74,"_process":11,"stream":27}],79:[function(require,module,exports){
-arguments[4][67][0].apply(exports,arguments)
-},{"dup":67}],80:[function(require,module,exports){
+},{"./lib/_stream_duplex.js":77,"./lib/_stream_passthrough.js":78,"./lib/_stream_readable.js":79,"./lib/_stream_transform.js":80,"./lib/_stream_writable.js":81,"_process":11,"stream":27}],86:[function(require,module,exports){
+arguments[4][74][0].apply(exports,arguments)
+},{"dup":74}],87:[function(require,module,exports){
 module.exports={
   "name": "levelup",
   "description": "Fast & simple storage - a Node.js-style LevelDB wrapper",
@@ -12396,7 +12822,7 @@ module.exports={
   "readme": "ERROR: No README data found!"
 }
 
-},{}],81:[function(require,module,exports){
+},{}],88:[function(require,module,exports){
 (function (Buffer){
 
 exports.compare = function (a, b) {
@@ -12546,7 +12972,7 @@ exports.filter = function (range, compare) {
 }
 
 }).call(this,{"isBuffer":require("../../../allex-toolbox-dev/node_modules/browserify/node_modules/insert-module-globals/node_modules/is-buffer/index.js")})
-},{"../../../allex-toolbox-dev/node_modules/browserify/node_modules/insert-module-globals/node_modules/is-buffer/index.js":9}],82:[function(require,module,exports){
+},{"../../../allex-toolbox-dev/node_modules/browserify/node_modules/insert-module-globals/node_modules/is-buffer/index.js":9}],89:[function(require,module,exports){
 (function (process){
 var path = require('path');
 var fs = require('fs');
@@ -12648,7 +13074,7 @@ mkdirP.sync = function sync (p, opts, made) {
 };
 
 }).call(this,require('_process'))
-},{"_process":11,"fs":1,"path":10}],83:[function(require,module,exports){
+},{"_process":11,"fs":1,"path":10}],90:[function(require,module,exports){
 (function (Buffer){
 /**
  * Convert a typed array to a Buffer without a copy
@@ -12677,7 +13103,7 @@ module.exports = function typedarrayToBuffer (arr) {
 }
 
 }).call(this,require("buffer").Buffer)
-},{"buffer":3,"is-typedarray":84}],84:[function(require,module,exports){
+},{"buffer":3,"is-typedarray":91}],91:[function(require,module,exports){
 module.exports      = isTypedArray
 isTypedArray.strict = isStrictTypedArray
 isTypedArray.loose  = isLooseTypedArray
@@ -12720,9 +13146,9 @@ function isLooseTypedArray(arr) {
   return names[toString.call(arr)]
 }
 
-},{}],85:[function(require,module,exports){
-arguments[4][45][0].apply(exports,arguments)
-},{"dup":45}],86:[function(require,module,exports){
+},{}],92:[function(require,module,exports){
+arguments[4][52][0].apply(exports,arguments)
+},{"dup":52}],93:[function(require,module,exports){
 function createNumChecker(execlib) {
   'use strict';
   var lib = execlib.lib;
@@ -12747,7 +13173,7 @@ function createNumChecker(execlib) {
 
 module.exports = createNumChecker;
 
-},{}],87:[function(require,module,exports){
+},{}],94:[function(require,module,exports){
 function createQueueableHandler(execlib, leveldblib) {
   'use strict';
   var lib = execlib.lib,
@@ -12778,7 +13204,7 @@ function createQueueableHandler(execlib, leveldblib) {
     }
     var qitem = defer ? [operation, args, defer] : [operation, args];
     if (this._busy) {
-      this.q.push(qitem);
+      this.q.add(qitem);
       return;
     }
     var m = this[operation];
@@ -12819,6 +13245,7 @@ function createQueueableHandler(execlib, leveldblib) {
     var batch = this.db.batch();
     consume(_q, putter.bind(null, batch));
     batch.write(this.finish.bind(this, _q));
+    batch = null;
     return this._busy.promise;
   };
   QueueableDBHandler.consume = consume;
@@ -12829,7 +13256,7 @@ function createQueueableHandler(execlib, leveldblib) {
 module.exports = createQueueableHandler;
 
 
-},{}],88:[function(require,module,exports){
+},{}],95:[function(require,module,exports){
 function createQueueableMixin (execlib) {
   'use strict';
   var lib = execlib.lib,
@@ -12852,12 +13279,16 @@ function createQueueableMixin (execlib) {
     this._checker = this.checkQ.bind(this);
     this._finisher = this.finish.bind(this);
   }
+  function trueresolver (waiter) {
+    waiter.resolve(true);
+  }
+  function rejecter(waiter) {
+    waiter.reject(_destroyingError);
+  }
   QueueableMixin.prototype.destroy = function () {
     this._checker = null;
     if (this._waiters) {
-      while (this._waiters.getFifoLength()) {
-        this._waiters.pop().reject(_destroyingError);
-      }
+      this._waiters.drain(rejecter);
       this._waiters.destroy();
     }
     this._waiters = null;
@@ -12877,6 +13308,7 @@ function createQueueableMixin (execlib) {
     } else {
       defer.resolve(this);
     }
+    defer = null;
     return ret;
   };
   QueueableMixin.prototype.whenFree = function (cb) {
@@ -12885,13 +13317,12 @@ function createQueueableMixin (execlib) {
       cb
     );
     this.busy(d);
+    cb = null;
   };
   QueueableMixin.prototype.checkQ = function () {
     var q;
     if (this.q.length<1) {
-      if (this._waiters.getFifoLength()) {
-        this._waiters.pop().resolve(true);
-      }
+      this._waiters.pop(trueresolver);
       return;
     }
     q = this.q;
@@ -12906,6 +13337,7 @@ function createQueueableMixin (execlib) {
     if ('function' === typeof cb) {
       cb(this._finisher);
     }
+    cb = null;
   };
   function qresolver(item) {
     var d = item[2];
@@ -12913,35 +13345,38 @@ function createQueueableMixin (execlib) {
     if (d && d.resolve ) {
       d.resolve(item[1]);
     }
+    item = null;
   }
   function qrejecter(err, item) {
     if (item[2]) {
       item[2].reject(err);
     }
+    err = null;
   }
-  QueueableMixin.prototype.finish = function (q, err) {
+  QueueableMixin.prototype.finish = function (_q, err) {
     //console.log('finish', q, err);
     if (err) {
       console.trace();
       console.log('error in batch', err);
-      if (q) {
+      if (_q) {
         consume(q,qrejecter.bind(null, err));
-        if (q.destroy) {
-          q.destroy();
+        if (_q.destroy) {
+          _q.destroy();
         }
       }
       this._busy.reject(err);
     } else {
-      if (q) {
-        consume(q,qresolver);
-        if (q.destroy) {
-          q.destroy();
+      if (_q) {
+        consume(_q,qresolver);
+        if (_q.destroy) {
+          _q.destroy();
         }
       }
       this._busy.resolve(true);
     }
     this._busy = null;
     this.checkQ();
+    _q = null;
   };
 
   QueueableMixin.inheritMethods = function (childclass) {
@@ -12955,22 +13390,21 @@ function createQueueableMixin (execlib) {
 
 module.exports = createQueueableMixin;
 
-},{}],89:[function(require,module,exports){
+},{}],96:[function(require,module,exports){
 module.exports = [{
   title: 'Streaming Defer Id',
   type: 'string',
   strongtype: 'String'
 }];
 
-},{}],90:[function(require,module,exports){
-function createServicePackMixin(execlib) {
+},{}],97:[function(require,module,exports){
+function createServicePackMixin(execlib, datafilterslib) {
   var lib = execlib.lib,
     q = lib.q,
     qlib = lib.qlib,
     JobBase = qlib.JobBase;
 
   function StreamingDefer(defer) {
-    console.log('isPromise', q.isPromise(defer.promise));
     JobBase.call(this, defer);
     this.id = lib.uid();
     this.stream = null;
@@ -13001,7 +13435,7 @@ function createServicePackMixin(execlib) {
     this.__streamingDefers = null;
   };
 
-  function notificator(countobj, streamingdefer, options, item, stream) {
+  function notifier(countobj, streamingdefer, options, item, stream) {
     streamingdefer.setStream(stream);
     countobj.count ++;
     streamingdefer.notify(item);
@@ -13012,16 +13446,25 @@ function createServicePackMixin(execlib) {
   }
 
   UserLevelDBMixin.prototype.streamLevelDB = function (db, options, defer) {
-    var remover, streamingdefer;
+    var remover, streamingdefer, streamingobj, sds;
     if (options && options.pagesize) {
       streamingdefer = new StreamingDefer(defer);
-      remover = qlib.executor(this.__streamingDefers.remove.bind(this.__streamingDefers, streamingdefer.id));
+      sds = this.__streamingDefers; 
+      streamingobj = {count: 0};
+      remover = function () {
+        sds.remove(streamingdefer.id);
+        streamingdefer.resolve(streamingobj);
+        streamingdefer = null;
+        streamingobj = null;
+        options = null;
+        sds = null;
+        remover = null;
+      };
       this.__streamingDefers.add(streamingdefer.id, streamingdefer);
-      streamingdefer.defer.promise.then(
+      db.traverse(notifier.bind(null, streamingobj, streamingdefer, options),options).then(
         remover,
         remover
       );
-      db.traverse(notificator.bind(null, {count: 0}, streamingdefer, options));
     } else {
       return db.streamInto(defer, options);
     }
@@ -13031,10 +13474,14 @@ function createServicePackMixin(execlib) {
     var streamingdefer = this.__streamingDefers.get(streamingdeferid);
     if (!streamingdefer) {
       defer.reject(new lib.Error('NO_STREAMING_DEFER', streamingdeferid));
+      streamingdeferid = null;
+      defer = null;
       return;
     }
     defer.resolve(true);
     streamingdefer.stream.resume();
+    streamingdeferid = null;
+    defer = null;
   };
 
 
@@ -13049,7 +13496,7 @@ function createServicePackMixin(execlib) {
 
 module.exports = createServicePackMixin;
 
-},{"./resumeleveldbstreamdescriptor":89}],91:[function(require,module,exports){
+},{"./resumeleveldbstreamdescriptor":96}],98:[function(require,module,exports){
 function createShift2Pusher(execlib, leveldblib) {
   'use strict';
   var lib = execlib.lib,
@@ -13085,6 +13532,7 @@ function createShift2Pusher(execlib, leveldblib) {
     if (prophash.starteddefer) {
       prophash.starteddefer.resolve(this);
     }
+    prophash = null;
   };
   Shift2Pusher.prototype.move = function (howmany, defer) {
     var shiftd = q.defer();
@@ -13116,12 +13564,18 @@ function createShift2Pusher(execlib, leveldblib) {
     );
     //consume(shifted, this.convert.bind(this));
     this.pusher.pushMany(shifted, d);
+    howmany = null;
+    defer = null;
+    shiftresult = null;
   };
   Shift2Pusher.prototype.finalizeMove = function (defer, len, pushfinalizer) {
     pushfinalizer().done(
       defer.resolve.bind(defer, len),
       defer.reject.bind(defer)
     );
+    defer = null;
+    len = null;
+    pushfinalizer = null;
   };
   Shift2Pusher.prototype.convert = function (shifteditem) {
     return shifteditem;
@@ -13132,7 +13586,7 @@ function createShift2Pusher(execlib, leveldblib) {
 
 module.exports = createShift2Pusher;
 
-},{}],92:[function(require,module,exports){
+},{}],99:[function(require,module,exports){
 function createStreamInSink(execlib) {
   var q = execlib.lib.q,
     qlib = execlib.lib.qlib;
@@ -13149,7 +13603,6 @@ function createStreamInSink(execlib) {
 
   return function (sink, method, options, itemcb, pagecb) {
     var d = q.defer();
-    console.log('calling', method, options);
     var sd = sink.call(method, options);
     sd.then(
       d.resolve.bind(d),
@@ -13162,7 +13615,7 @@ function createStreamInSink(execlib) {
 
 module.exports = createStreamInSink;
 
-},{}],93:[function(require,module,exports){
+},{}],100:[function(require,module,exports){
 function createChainedOperationsJob(execlib) {
   'use strict';
 
@@ -13174,7 +13627,7 @@ function createChainedOperationsJob(execlib) {
 
 module.exports = createChainedOperationsJob;
 
-},{}],94:[function(require,module,exports){
+},{}],101:[function(require,module,exports){
 function createFiniteLengthInsertJob(execlib, KnownLengthInsertJob) {
   'use strict';
   var lib = execlib.lib,
@@ -13206,7 +13659,7 @@ function createFiniteLengthInsertJob(execlib, KnownLengthInsertJob) {
 
 module.exports = createFiniteLengthInsertJob;
 
-},{}],95:[function(require,module,exports){
+},{}],102:[function(require,module,exports){
 function createKnownLengthInsertJob(execlib, JobBase) {
   'use strict';
   var lib = execlib.lib,

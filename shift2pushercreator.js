@@ -33,6 +33,7 @@ function createShift2Pusher(execlib, leveldblib) {
     if (prophash.starteddefer) {
       prophash.starteddefer.resolve(this);
     }
+    prophash = null;
   };
   Shift2Pusher.prototype.move = function (howmany, defer) {
     var shiftd = q.defer();
@@ -64,12 +65,18 @@ function createShift2Pusher(execlib, leveldblib) {
     );
     //consume(shifted, this.convert.bind(this));
     this.pusher.pushMany(shifted, d);
+    howmany = null;
+    defer = null;
+    shiftresult = null;
   };
   Shift2Pusher.prototype.finalizeMove = function (defer, len, pushfinalizer) {
     pushfinalizer().done(
       defer.resolve.bind(defer, len),
       defer.reject.bind(defer)
     );
+    defer = null;
+    len = null;
+    pushfinalizer = null;
   };
   Shift2Pusher.prototype.convert = function (shifteditem) {
     return shifteditem;

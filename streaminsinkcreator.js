@@ -14,7 +14,6 @@ function createStreamInSink(execlib) {
 
   return function (sink, method, options, itemcb, pagecb) {
     var d = q.defer();
-    console.log('calling', method, options);
     var sd = sink.call(method, options);
     sd.then(
       d.resolve.bind(d),

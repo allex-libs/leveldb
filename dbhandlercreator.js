@@ -3,7 +3,7 @@ var levelup = require('level-browserify'),
   Path = require('path'),
   mkdirp = require('mkdirp');
 
-function createDBHandler (execlib) {
+function createDBHandler (execlib, datafilterslib) {
   'use strict';
   var lib = execlib.lib,
     q = lib.q,
@@ -17,6 +17,7 @@ function createDBHandler (execlib) {
       return;
     }
     defer.resolve(true);
+    defer = null;
   }
 
   function preparePath(path) {
@@ -45,18 +46,28 @@ function createDBHandler (execlib) {
   FakeDB.prototype.del = function (key, options, cb) {
     this.q.push(['del', [key, options, cb]]);
   };
-  FakeDB.prototype.transferCommands = function (db) {
+  FakeDB.prototype.upsert = function (key, processorfunc, defaultrecord) {
+    this.q.push(['upsert', [key, processorfunc, defaultrecord]]);
+  };
+  function fakeDBDrainer (db, dbh, cp) {
+    var command = cp[0],
+      args = cp[1];
+    if (db[command]) {
+      return db[command].apply(db,args);
+    }
+    if (dbh[command]) {
+      return dbh[command].apply(dbh,args);
+    }
+  }
+  FakeDB.prototype.transferCommands = function (db, dbh) {
     if (!this.q) {
       return;
     }
-    while (this.q.getFifoLength()) {
-      var cp = this.q.pop(),
-        command = cp[0],
-        args = cp[1];
-      db[command].apply(db,args);
-    }
+    this.q.drain(fakeDBDrainer.bind(null, db, dbh));
     this.q.destroy();
     this.q = null;
+    db = null;
+    dbh = null;
   };
 
 
@@ -64,8 +75,8 @@ function createDBHandler (execlib) {
     var err;
     this.dbname = prophash.dbname;
     if (!this.dbname) {
+      err = new lib.Error('NO_DBNAME_IN_PROPERTYHASH','Property hash for LevelDBHandler misses the dbname property');
       if (prophash.starteddefer) {
-        err = new lib.Error('NO_DBNAME_IN_PROPERTYHASH','Property hash for LevelDBHandler misses the dbname property');
         prophash.starteddefer.reject(err);
         return;
       } else {
@@ -76,6 +87,7 @@ function createDBHandler (execlib) {
     this.put = null;
     this.get = null;
     this.del = null;
+    this.opEvent = prophash.listenable ? new lib.HookCollection() : null;
     this.setDB(new FakeDB());
     if (prophash.initiallyemptydb) {
       console.log(prophash.dbname, 'initiallyemptydb!');
@@ -85,13 +97,17 @@ function createDBHandler (execlib) {
     }
   }
   LevelDBHandler.prototype.destroy = function () {
-    if (!this.db) {
-      return;
+    if (this.opEvent) {
+      this.opEvent.destroy();
     }
-    if (this.db.close) {
+    this.opEvent = null;
+    this.del = null;
+    this.get = null;
+    this.put = null;
+    if (this.db && this.db.close) {
       this.db.close();
     }
-    if (this.db.destroy) {
+    if (this.db && this.db.destroy) {
       this.db.destroy();
     }
     this.db = null;
@@ -102,26 +118,53 @@ function createDBHandler (execlib) {
     if (err) {
       defer.reject(err);
     } else {
-      defer.resolve([key, val]);
+      defer.resolve([key,val]);
+      if (this.opEvent) {
+        this.opEvent.fire(key, val);
+      }
     }
+    key = null;
+    val = null;
+    defer = null;
   }
-
-  function createProperPutter(db) {
-    return function (key, val, options) {
-      var d = q.defer();
-      db.put(key, val, options, properPutterCB.bind(null, key, val, d));
-      return d.promise;
-    };
+  function properPutter(key, val, options) {
+    var d = q.defer();
+    if (!this.db) {
+      return;
+    }
+    this.db.put(key, val, options, properPutterCB.bind(this, key, val, d));
+    return d.promise;
+  }
+  function properDelerCB(key, defer, err) {
+    if (err) {
+      defer.reject(err);
+    } else {
+      defer.resolve(key);
+      if (this.opEvent) {
+        this.opEvent.fire(key);
+      }
+    }
+    key = null;
+    defer = null;
+  }
+  function properDeler(key, options) {
+    var d = q.defer();
+    if (!this.db) {
+      return;
+    }
+    this.db.del(key, properDelerCB.bind(this, key, d));
+    return d.promise;
   }
   LevelDBHandler.prototype.setDB = function (db, prophash) {
     var _db = this.db;
     this.db = db;
     //this.put = q.nbind(this.db.put, this.db);
-    this.put = createProperPutter(this.db);
+    this.put = properPutter.bind(this);
     this.get = q.nbind(this.db.get, this.db);
-    this.del = q.nbind(this.db.del, this.db);
+    //this.del = q.nbind(this.db.del, this.db);
+    this.del = properDeler.bind(this);
     if (_db && _db.transferCommands) {
-      _db.transferCommands(this.db);
+      _db.transferCommands(this.db, this);
     }
   };
   LevelDBHandler.prototype.createDB = function (prophash) {
@@ -164,35 +207,32 @@ function createDBHandler (execlib) {
     }
   };
 
-  function resultReporter(result) {
-    return q(result);
-  }
-
-  function errorReporter(deflt, error) {
-    if (error.notFound) {
-      return q(deflt);
-    } else {
-      return q.reject(error);
-    }
-  };
-
-  LevelDBHandler.prototype.getWDefault = function (key, deflt) {
-    return this.get(key).then(
-      resultReporter,
-      errorReporter.bind(null, deflt)
-    );
-  };
-
   //  Upsert section //
   function putterAfterProcessor(handler, defer, key, item) {
+    var und;
     if (item === null) {
       defer.resolve(null);
+      handler = null;
+      defer = null;
+      key = null;
+      item = null;
       return;
     }
-    handler.put(key, item).then(
-      defer.resolve.bind(defer),
-      defer.reject.bind(defer)
-    );
+    if (item === und) {
+      handler.del(key).then(
+        defer.resolve.bind(defer),
+        defer.reject.bind(defer)
+      );
+    } else {
+      handler.put(key, item).then(
+        defer.resolve.bind(defer),
+        defer.reject.bind(defer)
+      );
+    }
+    handler = null;
+    defer = null;
+    key = null;
+    item = null;
   }
   function offerrerToProcessor(handler, defer, key, processorfunc, item) {
     //console.log('offerrerToProcessor', key, '=>', item);
@@ -200,13 +240,9 @@ function createDBHandler (execlib) {
     try {
       procret = processorfunc(item, key);
     } catch(e) {
-      try {
+      console.error('Error in processorfunc', e.stack);
+      console.error(e);
       defer.reject(e);
-      } catch(e) {
-        console.error(e.stack);
-        console.error(e);
-      }
-      //console.log('processorfunc threw', e);
       return;
     }
     //if (procret && 'function' === typeof procret.then){
@@ -233,7 +269,7 @@ function createDBHandler (execlib) {
   function errorOfferrerToProcessor(handler, defer, key, processorfunc, defaultrecord, error) {
     if (error.notFound) {
       //console.log('record not found for', key);
-      offerrerToProcessor(handler, defer, key, processorfunc, defaultEvaluator(defaultrecord, defer) || null);
+      offerrerToProcessor(handler, defer, key, processorfunc, defaultEvaluator(defaultrecord, defer));
     } else {
       console.error('Error in getting data for upsert!', error);
       defer.reject(error);
@@ -264,7 +300,7 @@ function createDBHandler (execlib) {
     return item+amount;
   }
   function incer(fieldindex, amount, options, record) {
-    if (!lib.isArray(record)) {
+    if (fieldindex!==null && !lib.isArray(record)) {
       var msg = 'Received record '+record+'. Did you specify a default record for inc?';
       console.error(msg);
       throw new lib.Error('INVALID_RECORD', msg);
@@ -274,7 +310,10 @@ function createDBHandler (execlib) {
       should = options.criterionfunction(record, amount);
     }
     if (should) {
-      return record.map(incmapper.bind(null, fieldindex, options.dec ? -amount : amount));
+      if (lib.isArray(record)) {
+        return record.map(incmapper.bind(null, fieldindex, options.dec ? -amount : amount));
+      }
+      return options.dec ? record-amount : record+amount;
     } else {
       return null;
     }
@@ -301,6 +340,8 @@ function createDBHandler (execlib) {
     } else {
       defer.reject(error);
     }
+    defaultval = null;
+    defer = null;
   }
 
   LevelDBHandler.prototype.safeGet = function (key, defaultval) {
@@ -311,6 +352,8 @@ function createDBHandler (execlib) {
     );
     return d.promise;
   };
+  LevelDBHandler.prototype.getWDefault = LevelDBHandler.prototype.safeGet;
+
 
   // end of safe get //
 
@@ -324,22 +367,74 @@ function createDBHandler (execlib) {
       cb(item, stream);
     }
   }
-  function streamEnder(defer, stream) {
-    stream.removeAllListeners();
-    defer.resolve(true);
+  function datafilterer (filter, keyfilter) {
+    var ret = function (item) {
+      if (filter && !filter.isOK(item.value)) {
+        return false;
+      }
+      if (keyfilter && !keyfilter.isOK(item.key)) {
+        return false;
+      }
+      return true;
+    }
+    ret.destroy = function () {
+      filter = null;
+      keyfilter = null;
+      if (ret) {
+        ret.destroy = null;
+      }
+      ret = null;
+    };
+    return ret;
   }
   LevelDBHandler.prototype.traverse = function (cb, options) {
     var stream = this.getReadStream(options),
-      d = (options ? options.defer : null) || q.defer();
+      d = (options ? options.defer : null) || q.defer(),
+      destroyables = [stream],
+      _lisa = lib.isArray,
+      _lada = lib.arryDestroyAll;
     switch (typeof (options ? options.filter : void 0)) {
       case 'function':
         stream.on('data', functionFilterStreamTraverser.bind(null, options.filter, stream, cb));
+        break;
+      case 'object':
+        try {
+          destroyables.push(
+            datafilterer(
+              datafilterslib.createFromDescriptor(options.filter),
+              datafilterslib.createFromDescriptor(options.keyfilter)
+            )
+          );
+          stream.on('data', functionFilterStreamTraverser.bind(
+            null, 
+            destroyables[1],
+            stream,
+            cb));
+        } catch (e) {
+          console.error(e.stack);
+          console.error(e);
+          stream.on('data', streamTraverser.bind(null, stream, cb));
+        }
         break;
       default:
         stream.on('data', streamTraverser.bind(null, stream, cb));
         break;
     }
-    stream.on('end', streamEnder.bind(null, d, stream));
+    //stream.on('end', streamEnder.bind(null, d, stream, destroyables));
+    stream.on('end', function streamEnder() {
+      stream.removeAllListeners();
+      if (_lisa(destroyables) && destroyables.length>0) {
+        _lada(destroyables);
+      }
+      d.resolve(true);
+      d = null;
+      stream = null;
+      destroyables = null;
+      options = null;
+      cb = null;
+      _lisa = null;
+      _lada = null;
+    });
     return d.promise;
   };
   function pusher(container, item) {
@@ -354,6 +449,8 @@ function createDBHandler (execlib) {
   LevelDBHandler.prototype.streamInto = function (defer, options) {
     var ret = this.traverse(notifier.bind(null, defer), options);
     ret.then(defer.resolve.bind(defer));
+    defer = null;
+    options = null;
     return ret;
   }
   LevelDBHandler.prototype.getReadStream = function (options) {

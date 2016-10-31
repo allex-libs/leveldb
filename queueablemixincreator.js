@@ -20,12 +20,16 @@ function createQueueableMixin (execlib) {
     this._checker = this.checkQ.bind(this);
     this._finisher = this.finish.bind(this);
   }
+  function trueresolver (waiter) {
+    waiter.resolve(true);
+  }
+  function rejecter(waiter) {
+    waiter.reject(_destroyingError);
+  }
   QueueableMixin.prototype.destroy = function () {
     this._checker = null;
     if (this._waiters) {
-      while (this._waiters.getFifoLength()) {
-        this._waiters.pop().reject(_destroyingError);
-      }
+      this._waiters.drain(rejecter);
       this._waiters.destroy();
     }
     this._waiters = null;
@@ -45,6 +49,7 @@ function createQueueableMixin (execlib) {
     } else {
       defer.resolve(this);
     }
+    defer = null;
     return ret;
   };
   QueueableMixin.prototype.whenFree = function (cb) {
@@ -53,13 +58,12 @@ function createQueueableMixin (execlib) {
       cb
     );
     this.busy(d);
+    cb = null;
   };
   QueueableMixin.prototype.checkQ = function () {
     var q;
     if (this.q.length<1) {
-      if (this._waiters.getFifoLength()) {
-        this._waiters.pop().resolve(true);
-      }
+      this._waiters.pop(trueresolver);
       return;
     }
     q = this.q;
@@ -74,6 +78,7 @@ function createQueueableMixin (execlib) {
     if ('function' === typeof cb) {
       cb(this._finisher);
     }
+    cb = null;
   };
   function qresolver(item) {
     var d = item[2];
@@ -81,35 +86,38 @@ function createQueueableMixin (execlib) {
     if (d && d.resolve ) {
       d.resolve(item[1]);
     }
+    item = null;
   }
   function qrejecter(err, item) {
     if (item[2]) {
       item[2].reject(err);
     }
+    err = null;
   }
-  QueueableMixin.prototype.finish = function (q, err) {
+  QueueableMixin.prototype.finish = function (_q, err) {
     //console.log('finish', q, err);
     if (err) {
       console.trace();
       console.log('error in batch', err);
-      if (q) {
+      if (_q) {
         consume(q,qrejecter.bind(null, err));
-        if (q.destroy) {
-          q.destroy();
+        if (_q.destroy) {
+          _q.destroy();
         }
       }
       this._busy.reject(err);
     } else {
-      if (q) {
-        consume(q,qresolver);
-        if (q.destroy) {
-          q.destroy();
+      if (_q) {
+        consume(_q,qresolver);
+        if (_q.destroy) {
+          _q.destroy();
         }
       }
       this._busy.resolve(true);
     }
     this._busy = null;
     this.checkQ();
+    _q = null;
   };
 
   QueueableMixin.inheritMethods = function (childclass) {

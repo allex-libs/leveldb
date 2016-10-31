@@ -1,11 +1,10 @@
-function createServicePackMixin(execlib) {
+function createServicePackMixin(execlib, datafilterslib) {
   var lib = execlib.lib,
     q = lib.q,
     qlib = lib.qlib,
     JobBase = qlib.JobBase;
 
   function StreamingDefer(defer) {
-    console.log('isPromise', q.isPromise(defer.promise));
     JobBase.call(this, defer);
     this.id = lib.uid();
     this.stream = null;
@@ -36,7 +35,7 @@ function createServicePackMixin(execlib) {
     this.__streamingDefers = null;
   };
 
-  function notificator(countobj, streamingdefer, options, item, stream) {
+  function notifier(countobj, streamingdefer, options, item, stream) {
     streamingdefer.setStream(stream);
     countobj.count ++;
     streamingdefer.notify(item);
@@ -47,16 +46,25 @@ function createServicePackMixin(execlib) {
   }
 
   UserLevelDBMixin.prototype.streamLevelDB = function (db, options, defer) {
-    var remover, streamingdefer;
+    var remover, streamingdefer, streamingobj, sds;
     if (options && options.pagesize) {
       streamingdefer = new StreamingDefer(defer);
-      remover = qlib.executor(this.__streamingDefers.remove.bind(this.__streamingDefers, streamingdefer.id));
+      sds = this.__streamingDefers; 
+      streamingobj = {count: 0};
+      remover = function () {
+        sds.remove(streamingdefer.id);
+        streamingdefer.resolve(streamingobj);
+        streamingdefer = null;
+        streamingobj = null;
+        options = null;
+        sds = null;
+        remover = null;
+      };
       this.__streamingDefers.add(streamingdefer.id, streamingdefer);
-      streamingdefer.defer.promise.then(
+      db.traverse(notifier.bind(null, streamingobj, streamingdefer, options),options).then(
         remover,
         remover
       );
-      db.traverse(notificator.bind(null, {count: 0}, streamingdefer, options));
     } else {
       return db.streamInto(defer, options);
     }
@@ -66,10 +74,14 @@ function createServicePackMixin(execlib) {
     var streamingdefer = this.__streamingDefers.get(streamingdeferid);
     if (!streamingdefer) {
       defer.reject(new lib.Error('NO_STREAMING_DEFER', streamingdeferid));
+      streamingdeferid = null;
+      defer = null;
       return;
     }
     defer.resolve(true);
     streamingdefer.stream.resume();
+    streamingdeferid = null;
+    defer = null;
   };
 
 
