@@ -1,12 +1,11 @@
-var levelup = require('level-browserify'),
-  libLoader = require('./libloader');
+var libLoader = require('./libloader');
 
 function createLib(execlib) {
-  return execlib.loadDependencies('client', ['allex:datafilters:lib'], realCreator.bind(null, execlib));
+  return execlib.loadDependencies('client', ['allex:datafilters:lib', 'allex:buffer:lib'], realCreator.bind(null, execlib));
 }
 
-function realCreator(execlib, datafilterslib) {
-  return execlib.lib.q(libLoader(execlib, datafilterslib));
+function realCreator(execlib, datafilterslib, bufferlib) {
+  return execlib.lib.q(libLoader(execlib, datafilterslib, bufferlib));
 }
 
 

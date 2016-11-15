@@ -1,13 +1,10 @@
-function realCreator(execlib, datafilterslib) {
+function realCreator(execlib, datafilterslib, bufferlib) {
   'use strict';
   var lib = execlib.lib,
     q = lib.q,
     qlib = lib.qlib,
-    LevelDBHandler = require('./dbhandlercreator')(execlib, datafilterslib);
-
-  function creator(hash) {
-    return new LevelDBHandler(hash);
-  }
+    encodingMakeup,
+    LevelDBHandler;
 
   var _nullcodec = {
     encode: function (val) {
@@ -38,6 +35,15 @@ function realCreator(execlib, datafilterslib) {
     Int64Codec: require('./codecs/int64codeccreator')(execlib, numchecker)
   };
 
+  encodingMakeup = require('./encodingmakeupcreator')(execlib, ret, bufferlib);
+  LevelDBHandler = require('./dbhandlercreator')(execlib, datafilterslib, encodingMakeup);
+  function creator(hash) {
+    return new LevelDBHandler(hash);
+  }
+
+  ret.encodingMakeup = encodingMakeup;
+  ret.LevelDBHandler = LevelDBHandler;
+  ret.createDBHandler = creator;
   ret.QueueableMixin = require('./queueablemixincreator')(execlib, ret);
   ret.QueueableHandler = require('./queueablehandlercreator')(execlib, ret);
   ret.DBArray = require('./dbarrayhandlercreator')(execlib, ret);

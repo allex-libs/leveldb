@@ -3,7 +3,7 @@ var levelup = require('level-browserify'),
   Path = require('path'),
   mkdirp = require('mkdirp');
 
-function createDBHandler (execlib, datafilterslib) {
+function createDBHandler (execlib, datafilterslib, encodingMakeup) {
   'use strict';
   var lib = execlib.lib,
     q = lib.q,
@@ -73,6 +73,7 @@ function createDBHandler (execlib, datafilterslib) {
 
   function LevelDBHandler(prophash) {
     var err;
+    encodingMakeup(prophash.dbcreationoptions, lib.uid());
     this.dbname = prophash.dbname;
     if (!this.dbname) {
       err = new lib.Error('NO_DBNAME_IN_PROPERTYHASH','Property hash for LevelDBHandler misses the dbname property');
