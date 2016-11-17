@@ -1,13 +1,14 @@
 var levelup = require('level-browserify'),
-  child_process = require('child_process'),
   Path = require('path'),
+  fs = require('fs'),
   mkdirp = require('mkdirp');
 
 function createDBHandler (execlib, datafilterslib, encodingMakeup) {
   'use strict';
   var lib = execlib.lib,
     q = lib.q,
-    qlib = lib.qlib;
+    qlib = lib.qlib,
+    deleteDir = require('./dirdeleter')(execlib).deleteDirWithCB;
 
   function onDirMade(defer, err) {
     var pa;
@@ -91,8 +92,8 @@ function createDBHandler (execlib, datafilterslib, encodingMakeup) {
     this.opEvent = prophash.listenable ? new lib.HookCollection() : null;
     this.setDB(new FakeDB());
     if (prophash.initiallyemptydb) {
-      console.log(prophash.dbname, 'initiallyemptydb!');
-      child_process.exec('rm -rf '+prophash.dbname, this.createDB.bind(this, prophash));
+      //console.log(prophash.dbname, 'initiallyemptydb!');
+      deleteDir(prophash.dbname, this.createDB.bind(this, prophash));
     } else {
       this.createDB(prophash);
     }
