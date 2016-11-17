@@ -1,7 +1,6 @@
 (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
 'use strict'
 
-exports.byteLength = byteLength
 exports.toByteArray = toByteArray
 exports.fromByteArray = fromByteArray
 
@@ -9,17 +8,23 @@ var lookup = []
 var revLookup = []
 var Arr = typeof Uint8Array !== 'undefined' ? Uint8Array : Array
 
-var code = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
-for (var i = 0, len = code.length; i < len; ++i) {
-  lookup[i] = code[i]
-  revLookup[code.charCodeAt(i)] = i
+function init () {
+  var code = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
+  for (var i = 0, len = code.length; i < len; ++i) {
+    lookup[i] = code[i]
+    revLookup[code.charCodeAt(i)] = i
+  }
+
+  revLookup['-'.charCodeAt(0)] = 62
+  revLookup['_'.charCodeAt(0)] = 63
 }
 
-revLookup['-'.charCodeAt(0)] = 62
-revLookup['_'.charCodeAt(0)] = 63
+init()
 
-function placeHoldersCount (b64) {
+function toByteArray (b64) {
+  var i, j, l, tmp, placeHolders, arr
   var len = b64.length
+
   if (len % 4 > 0) {
     throw new Error('Invalid string. Length must be a multiple of 4')
   }
@@ -29,19 +34,9 @@ function placeHoldersCount (b64) {
   // represent one byte
   // if there is only one, then the three characters before it represent 2 bytes
   // this is just a cheap hack to not do indexOf twice
-  return b64[len - 2] === '=' ? 2 : b64[len - 1] === '=' ? 1 : 0
-}
+  placeHolders = b64[len - 2] === '=' ? 2 : b64[len - 1] === '=' ? 1 : 0
 
-function byteLength (b64) {
   // base64 is 4/3 + up to two characters of the original data
-  return b64.length * 3 / 4 - placeHoldersCount(b64)
-}
-
-function toByteArray (b64) {
-  var i, j, l, tmp, placeHolders, arr
-  var len = b64.length
-  placeHolders = placeHoldersCount(b64)
-
   arr = new Arr(len * 3 / 4 - placeHolders)
 
   // if there are placeholders, only get up to the last complete 4 chars
@@ -3156,10 +3151,6 @@ var processNextTick = require('process-nextick-args');
 var isArray = require('isarray');
 /*</replacement>*/
 
-/*<replacement>*/
-var Duplex;
-/*</replacement>*/
-
 Readable.ReadableState = ReadableState;
 
 /*<replacement>*/
@@ -3207,8 +3198,6 @@ var StringDecoder;
 util.inherits(Readable, Stream);
 
 function prependListener(emitter, event, fn) {
-  // Sadly this is not cacheable as some libraries bundle their own
-  // event emitter implementation with them.
   if (typeof emitter.prependListener === 'function') {
     return emitter.prependListener(event, fn);
   } else {
@@ -3220,6 +3209,7 @@ function prependListener(emitter, event, fn) {
   }
 }
 
+var Duplex;
 function ReadableState(options, stream) {
   Duplex = Duplex || require('./_stream_duplex');
 
@@ -3289,6 +3279,7 @@ function ReadableState(options, stream) {
   }
 }
 
+var Duplex;
 function Readable(options) {
   Duplex = Duplex || require('./_stream_duplex');
 
@@ -3611,7 +3602,7 @@ function maybeReadMore_(stream, state) {
 // for virtual (non-string, non-buffer) streams, "length" is somewhat
 // arbitrary, and perhaps not very meaningful.
 Readable.prototype._read = function (n) {
-  this.emit('error', new Error('_read() is not implemented'));
+  this.emit('error', new Error('not implemented'));
 };
 
 Readable.prototype.pipe = function (dest, pipeOpts) {
@@ -3789,16 +3780,16 @@ Readable.prototype.unpipe = function (dest) {
     state.pipesCount = 0;
     state.flowing = false;
 
-    for (var i = 0; i < len; i++) {
-      dests[i].emit('unpipe', this);
+    for (var _i = 0; _i < len; _i++) {
+      dests[_i].emit('unpipe', this);
     }return this;
   }
 
   // try to find the right one.
-  var index = indexOf(state.pipes, dest);
-  if (index === -1) return this;
+  var i = indexOf(state.pipes, dest);
+  if (i === -1) return this;
 
-  state.pipes.splice(index, 1);
+  state.pipes.splice(i, 1);
   state.pipesCount -= 1;
   if (state.pipesCount === 1) state.pipes = state.pipes[0];
 
@@ -4183,6 +4174,7 @@ function Transform(options) {
 
   this._transformState = new TransformState(this);
 
+  // when the writable side finishes, then flush out anything remaining.
   var stream = this;
 
   // start out asking for a readable event once data is transformed.
@@ -4199,10 +4191,9 @@ function Transform(options) {
     if (typeof options.flush === 'function') this._flush = options.flush;
   }
 
-  // When the writable side finishes, then flush out anything remaining.
   this.once('prefinish', function () {
-    if (typeof this._flush === 'function') this._flush(function (er, data) {
-      done(stream, er, data);
+    if (typeof this._flush === 'function') this._flush(function (er) {
+      done(stream, er);
     });else done(stream);
   });
 }
@@ -4223,7 +4214,7 @@ Transform.prototype.push = function (chunk, encoding) {
 // an error, then that'll put the hurt on the whole operation.  If you
 // never call cb(), then you'll never get another chunk.
 Transform.prototype._transform = function (chunk, encoding, cb) {
-  throw new Error('_transform() is not implemented');
+  throw new Error('Not implemented');
 };
 
 Transform.prototype._write = function (chunk, encoding, cb) {
@@ -4253,10 +4244,8 @@ Transform.prototype._read = function (n) {
   }
 };
 
-function done(stream, er, data) {
+function done(stream, er) {
   if (er) return stream.emit('error', er);
-
-  if (data !== null && data !== undefined) stream.push(data);
 
   // if there's nothing in the write buffer, then that means
   // that nothing more will ever be provided
@@ -4285,10 +4274,6 @@ var processNextTick = require('process-nextick-args');
 
 /*<replacement>*/
 var asyncWrite = !process.browser && ['v0.10', 'v0.9.'].indexOf(process.version.slice(0, 5)) > -1 ? setImmediate : processNextTick;
-/*</replacement>*/
-
-/*<replacement>*/
-var Duplex;
 /*</replacement>*/
 
 Writable.WritableState = WritableState;
@@ -4331,6 +4316,7 @@ function WriteReq(chunk, encoding, cb) {
   this.next = null;
 }
 
+var Duplex;
 function WritableState(options, stream) {
   Duplex = Duplex || require('./_stream_duplex');
 
@@ -4352,7 +4338,6 @@ function WritableState(options, stream) {
   // cast to ints.
   this.highWaterMark = ~ ~this.highWaterMark;
 
-  // drain event flag.
   this.needDrain = false;
   // at the start of calling end()
   this.ending = false;
@@ -4427,7 +4412,7 @@ function WritableState(options, stream) {
   this.corkedRequestsFree = new CorkedRequest(this);
 }
 
-WritableState.prototype.getBuffer = function getBuffer() {
+WritableState.prototype.getBuffer = function writableStateGetBuffer() {
   var current = this.bufferedRequest;
   var out = [];
   while (current) {
@@ -4447,37 +4432,13 @@ WritableState.prototype.getBuffer = function getBuffer() {
   } catch (_) {}
 })();
 
-// Test _writableState for inheritance to account for Duplex streams,
-// whose prototype chain only points to Readable.
-var realHasInstance;
-if (typeof Symbol === 'function' && Symbol.hasInstance && typeof Function.prototype[Symbol.hasInstance] === 'function') {
-  realHasInstance = Function.prototype[Symbol.hasInstance];
-  Object.defineProperty(Writable, Symbol.hasInstance, {
-    value: function (object) {
-      if (realHasInstance.call(this, object)) return true;
-
-      return object && object._writableState instanceof WritableState;
-    }
-  });
-} else {
-  realHasInstance = function (object) {
-    return object instanceof this;
-  };
-}
-
+var Duplex;
 function Writable(options) {
   Duplex = Duplex || require('./_stream_duplex');
 
-  // Writable ctor is applied to Duplexes, too.
-  // `realHasInstance` is necessary because using plain `instanceof`
-  // would return false, as no `_writableState` property is attached.
-
-  // Trying to use the custom `instanceof` for Writable here will also break the
-  // Node.js LazyTransform implementation, which has a non-trivial getter for
-  // `_writableState` that would lead to infinite recursion.
-  if (!realHasInstance.call(Writable, this) && !(this instanceof Duplex)) {
-    return new Writable(options);
-  }
+  // Writable ctor is applied to Duplexes, though they're not
+  // instanceof Writable, they're instanceof Readable.
+  if (!(this instanceof Writable) && !(this instanceof Duplex)) return new Writable(options);
 
   this._writableState = new WritableState(options, this);
 
@@ -4737,7 +4698,7 @@ function clearBuffer(stream, state) {
 }
 
 Writable.prototype._write = function (chunk, encoding, cb) {
-  cb(new Error('_write() is not implemented'));
+  cb(new Error('not implemented'));
 };
 
 Writable.prototype._writev = null;
@@ -5344,15 +5305,13 @@ function config (name) {
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
 },{}],29:[function(require,module,exports){
-arguments[4][9][0].apply(exports,arguments)
-},{"dup":9}],30:[function(require,module,exports){
 module.exports = function isBuffer(arg) {
   return arg && typeof arg === 'object'
     && typeof arg.copy === 'function'
     && typeof arg.fill === 'function'
     && typeof arg.readUInt8 === 'function';
 }
-},{}],31:[function(require,module,exports){
+},{}],30:[function(require,module,exports){
 (function (process,global){
 // Copyright Joyent, Inc. and other Node contributors.
 //
@@ -5942,10 +5901,10 @@ function hasOwnProperty(obj, prop) {
 }
 
 }).call(this,require('_process'),typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./support/isBuffer":30,"_process":14,"inherits":29}],32:[function(require,module,exports){
+},{"./support/isBuffer":29,"_process":14,"inherits":9}],31:[function(require,module,exports){
 ALLEX.execSuite.libRegistry.register('allex_leveldblib',require('./libloader')(ALLEX, ALLEX.execSuite.libRegistry.register('allex_datafilterslib')));
 
-},{"./libloader":48}],33:[function(require,module,exports){
+},{"./libloader":48}],32:[function(require,module,exports){
 (function (Buffer){
 function createByteCodec(execlib, numchecker) {
   return {
@@ -5969,7 +5928,7 @@ function createByteCodec(execlib, numchecker) {
 module.exports = createByteCodec;
 
 }).call(this,require("buffer").Buffer)
-},{"buffer":5}],34:[function(require,module,exports){
+},{"buffer":5}],33:[function(require,module,exports){
 (function (Buffer){
 function createInt16BECodec(execlib, numchecker) {
   return {
@@ -5993,7 +5952,7 @@ function createInt16BECodec(execlib, numchecker) {
 module.exports = createInt16BECodec;
 
 }).call(this,require("buffer").Buffer)
-},{"buffer":5}],35:[function(require,module,exports){
+},{"buffer":5}],34:[function(require,module,exports){
 (function (Buffer){
 function createInt16LECodec(execlib, numchecker) {
   return {
@@ -6017,7 +5976,7 @@ function createInt16LECodec(execlib, numchecker) {
 module.exports = createInt16LECodec;
 
 }).call(this,require("buffer").Buffer)
-},{"buffer":5}],36:[function(require,module,exports){
+},{"buffer":5}],35:[function(require,module,exports){
 (function (Buffer){
 function createInt32BECodec(execlib, numchecker) {
   'use strict';
@@ -6043,7 +6002,7 @@ function createInt32BECodec(execlib, numchecker) {
 module.exports = createInt32BECodec;
 
 }).call(this,require("buffer").Buffer)
-},{"buffer":5}],37:[function(require,module,exports){
+},{"buffer":5}],36:[function(require,module,exports){
 (function (Buffer){
 function createInt32LECodec(execlib, numchecker) {
   'use strict';
@@ -6069,7 +6028,7 @@ function createInt32LECodec(execlib, numchecker) {
 module.exports = createInt32LECodec;
 
 }).call(this,require("buffer").Buffer)
-},{"buffer":5}],38:[function(require,module,exports){
+},{"buffer":5}],37:[function(require,module,exports){
 (function (Buffer){
 function createInt64Codec(execlib) {
   return {
@@ -6098,7 +6057,7 @@ function createInt64Codec(execlib) {
 module.exports = createInt64Codec;
 
 }).call(this,require("buffer").Buffer)
-},{"buffer":5}],39:[function(require,module,exports){
+},{"buffer":5}],38:[function(require,module,exports){
 (function (Buffer){
 function createUInt16BECodec(execlib, numchecker) {
   return {
@@ -6122,7 +6081,7 @@ function createUInt16BECodec(execlib, numchecker) {
 module.exports = createUInt16BECodec;
 
 }).call(this,require("buffer").Buffer)
-},{"buffer":5}],40:[function(require,module,exports){
+},{"buffer":5}],39:[function(require,module,exports){
 (function (Buffer){
 function createUInt16LECodec(execlib, numchecker) {
   return {
@@ -6146,7 +6105,7 @@ function createUInt16LECodec(execlib, numchecker) {
 module.exports = createUInt16LECodec;
 
 }).call(this,require("buffer").Buffer)
-},{"buffer":5}],41:[function(require,module,exports){
+},{"buffer":5}],40:[function(require,module,exports){
 (function (Buffer){
 function createUInt32BECodec(execlib, numchecker) {
   'use strict';
@@ -6172,7 +6131,7 @@ function createUInt32BECodec(execlib, numchecker) {
 module.exports = createUInt32BECodec;
 
 }).call(this,require("buffer").Buffer)
-},{"buffer":5}],42:[function(require,module,exports){
+},{"buffer":5}],41:[function(require,module,exports){
 (function (Buffer){
 function createUInt32LECodec(execlib, numchecker) {
   'use strict';
@@ -6198,7 +6157,7 @@ function createUInt32LECodec(execlib, numchecker) {
 module.exports = createUInt32LECodec;
 
 }).call(this,require("buffer").Buffer)
-},{"buffer":5}],43:[function(require,module,exports){
+},{"buffer":5}],42:[function(require,module,exports){
 (function (Buffer){
 function createVerbatimDecoder(execlib) {
   'use strict';
@@ -6217,8 +6176,8 @@ function createVerbatimDecoder(execlib) {
 
 module.exports = createVerbatimDecoder;
 
-}).call(this,{"isBuffer":require("../../allex-toolbox-dev/node_modules/is-buffer/index.js")})
-},{"../../allex-toolbox-dev/node_modules/is-buffer/index.js":10}],44:[function(require,module,exports){
+}).call(this,{"isBuffer":require("../../../../../../lib/lib/node_modules/allex-toolbox-dev/node_modules/is-buffer/index.js")})
+},{"../../../../../../lib/lib/node_modules/allex-toolbox-dev/node_modules/is-buffer/index.js":10}],43:[function(require,module,exports){
 function createDBArray(execlib, leveldblib) {
   'use strict';
   var lib = execlib.lib,
@@ -6466,17 +6425,18 @@ function createDBArray(execlib, leveldblib) {
 
 module.exports = createDBArray;
 
-},{}],45:[function(require,module,exports){
+},{}],44:[function(require,module,exports){
 var levelup = require('level-browserify'),
-  child_process = require('child_process'),
   Path = require('path'),
+  fs = require('fs'),
   mkdirp = require('mkdirp');
 
 function createDBHandler (execlib, datafilterslib, encodingMakeup) {
   'use strict';
   var lib = execlib.lib,
     q = lib.q,
-    qlib = lib.qlib;
+    qlib = lib.qlib,
+    deleteDir = require('./dirdeleter')(execlib).deleteDirWithCB;
 
   function onDirMade(defer, err) {
     var pa;
@@ -6560,8 +6520,8 @@ function createDBHandler (execlib, datafilterslib, encodingMakeup) {
     this.opEvent = prophash.listenable ? new lib.HookCollection() : null;
     this.setDB(new FakeDB());
     if (prophash.initiallyemptydb) {
-      console.log(prophash.dbname, 'initiallyemptydb!');
-      child_process.exec('rm -rf '+prophash.dbname, this.createDB.bind(this, prophash));
+      //console.log(prophash.dbname, 'initiallyemptydb!');
+      deleteDir(prophash.dbname, this.createDB.bind(this, prophash));
     } else {
       this.createDB(prophash);
     }
@@ -6946,7 +6906,98 @@ function createDBHandler (execlib, datafilterslib, encodingMakeup) {
 
 module.exports = createDBHandler;
 
-},{"child_process":3,"level-browserify":69,"mkdirp":84,"path":12}],46:[function(require,module,exports){
+},{"./dirdeleter":45,"fs":3,"level-browserify":69,"mkdirp":84,"path":12}],45:[function(require,module,exports){
+var fs = require('fs'),
+  Path = require('path');
+
+function createDirDeleter(execlib) {
+  'use strict';
+
+  var lib = execlib.lib,
+    q = lib.q,
+    qlib = lib.qlib,
+    JobBase = qlib.JobBase;
+
+  function DirDeleter(path, defer) {
+    JobBase.call(this, defer);
+    this.path = path;
+  }
+  lib.inherit(DirDeleter, JobBase);
+  DirDeleter.prototype.destroy = function () {
+    this.path = null;
+    JobBase.prototype.destroy.call(this);
+  };
+  DirDeleter.prototype.go = function () {
+    fs.exists(this.path, this.onExists.bind(this));
+    return this.defer ? this.defer.promise : q(false);
+  };
+  DirDeleter.prototype.onExists = function (exists) {
+    if (!exists) {
+      this.resolve(true);
+      return;
+    }
+    fs.readdir(this.path, this.onDirContents.bind(this));
+  };
+  DirDeleter.prototype.onDirContents = function (err, list) {
+    if (err) {
+      this.reject(err);
+      return;
+    }
+    q.all(list.map(this.deleteFsItem.bind(this))).then(
+      this.onDirClear.bind(this)
+    );
+  };
+  DirDeleter.prototype.onDirClear = function () {
+    fs.rmdir(this.path, this.onDirDeleted.bind(this));
+  };
+  DirDeleter.prototype.onDirDeleted = function (err) {
+    if (err) {
+      this.reject(err);
+    } else {
+      this.resolve(true);
+    }
+  };
+  DirDeleter.prototype.deleteFsItem = function (fsitemname) {
+    var d = q.defer(), fsitempath = Path.join(this.path, fsitemname);
+    fs.lstat(fsitempath, this.onItemStats.bind(this, d, fsitempath));
+    return d.promise;
+  };
+  DirDeleter.prototype.onItemStats = function (defer, fsitempath, err, stats) {
+    if (err) {
+      defer.reject(err);
+      return;
+    }
+    if (stats.isDirectory()) {
+      (new DirDeleter(fsitempath, defer)).go();
+    } else {
+      fs.unlink(fsitempath, this.onUnlinked.bind(this, defer));
+    }
+  };
+  DirDeleter.prototype.onUnlinked = function (defer, err) {
+    if (err) {
+      defer.reject(err);
+    } else {
+      defer.resolve(true);
+    }
+  };
+
+  function deleteDirAsPromised (path) {
+    return new DirDeleter(path).go();
+  }
+
+  function deleteDir (path, cb) {
+    deleteDirAsPromised(path).then(cb);
+  }
+
+  return {
+    deleteDirWithCB: deleteDir,
+    deleteDirWithPromise: deleteDirAsPromised
+  };
+}
+
+module.exports = createDirDeleter;
+
+},{"fs":3,"path":12}],46:[function(require,module,exports){
 function createEncodingMakeup (execlib, leveldblib, bufferlib) {
   'use strict';
 
@@ -7225,7 +7276,7 @@ function realCreator(execlib, datafilterslib, bufferlib) {
 module.exports = realCreator;
 
 }).call(this,require("buffer").Buffer)
-},{"./codecs/bytecodeccreator":33,"./codecs/int16becodeccreator":34,"./codecs/int16lecodeccreator":35,"./codecs/int32becodeccreator":36,"./codecs/int32lecodeccreator":37,"./codecs/int64codeccreator":38,"./codecs/uint16becodeccreator":39,"./codecs/uint16lecodeccreator":40,"./codecs/uint32becodeccreator":41,"./codecs/uint32lecodeccreator":42,"./codecs/verbatimdecodercreator":43,"./dbarrayhandlercreator":44,"./dbhandlercreator":45,"./encodingmakeupcreator":46,"./hookableusersessionmixincreator":47,"./numcheckercreator":100,"./queueablehandlercreator":101,"./queueablemixincreator":102,"./resumeleveldbstreamdescriptor":103,"./serviceusermixincreator":104,"./shift2pushercreator":105,"./streaminsinkcreator":106,"./transactions/chainedoperationsjobcreator":107,"./transactions/finitelengthinsertjobcreator":108,"./transactions/knownlengthinsertjobcreator":109,"buffer":5}],49:[function(require,module,exports){
+},{"./codecs/bytecodeccreator":32,"./codecs/int16becodeccreator":33,"./codecs/int16lecodeccreator":34,"./codecs/int32becodeccreator":35,"./codecs/int32lecodeccreator":36,"./codecs/int64codeccreator":37,"./codecs/uint16becodeccreator":38,"./codecs/uint16lecodeccreator":39,"./codecs/uint32becodeccreator":40,"./codecs/uint32lecodeccreator":41,"./codecs/verbatimdecodercreator":42,"./dbarrayhandlercreator":43,"./dbhandlercreator":44,"./encodingmakeupcreator":46,"./hookableusersessionmixincreator":47,"./numcheckercreator":100,"./queueablehandlercreator":101,"./queueablemixincreator":102,"./resumeleveldbstreamdescriptor":103,"./serviceusermixincreator":104,"./shift2pushercreator":105,"./streaminsinkcreator":106,"./transactions/chainedoperationsjobcreator":107,"./transactions/finitelengthinsertjobcreator":108,"./transactions/knownlengthinsertjobcreator":109,"buffer":5}],49:[function(require,module,exports){
 (function (process){
 /* Copyright (c) 2013 Rod Vagg, MIT License */
 
@@ -7621,8 +7672,8 @@ module.exports.AbstractLevelDOWN    = AbstractLevelDOWN
 module.exports.AbstractIterator     = AbstractIterator
 module.exports.AbstractChainedBatch = AbstractChainedBatch
 
-}).call(this,{"isBuffer":require("../../../allex-toolbox-dev/node_modules/is-buffer/index.js")},require('_process'))
-},{"../../../allex-toolbox-dev/node_modules/is-buffer/index.js":10,"./abstract-chained-batch":49,"./abstract-iterator":50,"_process":14,"xtend":52}],52:[function(require,module,exports){
+}).call(this,{"isBuffer":require("../../../../../../../lib/lib/node_modules/allex-toolbox-dev/node_modules/is-buffer/index.js")},require('_process'))
+},{"../../../../../../../lib/lib/node_modules/allex-toolbox-dev/node_modules/is-buffer/index.js":10,"./abstract-chained-batch":49,"./abstract-iterator":50,"_process":14,"xtend":52}],52:[function(require,module,exports){
 module.exports = extend
 
 function extend() {
@@ -7751,8 +7802,8 @@ function objectToString(o) {
   return Object.prototype.toString.call(o);
 }
 
-}).call(this,{"isBuffer":require("../../../../allex-toolbox-dev/node_modules/is-buffer/index.js")})
-},{"../../../../allex-toolbox-dev/node_modules/is-buffer/index.js":10}],54:[function(require,module,exports){
+}).call(this,{"isBuffer":require("../../../../../../../../lib/lib/node_modules/allex-toolbox-dev/node_modules/is-buffer/index.js")})
+},{"../../../../../../../../lib/lib/node_modules/allex-toolbox-dev/node_modules/is-buffer/index.js":10}],54:[function(require,module,exports){
 var util = require('util')
   , AbstractIterator = require('abstract-leveldown').AbstractIterator
 
@@ -7788,7 +7839,7 @@ DeferredIterator.prototype._operation = function (method, args) {
 
 module.exports = DeferredIterator;
 
-},{"abstract-leveldown":59,"util":31}],55:[function(require,module,exports){
+},{"abstract-leveldown":59,"util":30}],55:[function(require,module,exports){
 (function (Buffer,process){
 var util              = require('util')
   , AbstractLevelDOWN = require('abstract-leveldown').AbstractLevelDOWN
@@ -7847,8 +7898,8 @@ DeferredLevelDOWN.prototype._iterator = function (options) {
 module.exports                  = DeferredLevelDOWN
 module.exports.DeferredIterator = DeferredIterator
 
-}).call(this,{"isBuffer":require("../../../allex-toolbox-dev/node_modules/is-buffer/index.js")},require('_process'))
-},{"../../../allex-toolbox-dev/node_modules/is-buffer/index.js":10,"./deferred-iterator":54,"_process":14,"abstract-leveldown":59,"util":31}],56:[function(require,module,exports){
+}).call(this,{"isBuffer":require("../../../../../../../lib/lib/node_modules/allex-toolbox-dev/node_modules/is-buffer/index.js")},require('_process'))
+},{"../../../../../../../lib/lib/node_modules/allex-toolbox-dev/node_modules/is-buffer/index.js":10,"./deferred-iterator":54,"_process":14,"abstract-leveldown":59,"util":30}],56:[function(require,module,exports){
 (function (process){
 /* Copyright (c) 2013 Rod Vagg, MIT License */
 
@@ -8208,8 +8259,8 @@ AbstractLevelDOWN.prototype._checkKey = function (obj, type) {
 
 module.exports = AbstractLevelDOWN
 
-}).call(this,{"isBuffer":require("../../../../../allex-toolbox-dev/node_modules/is-buffer/index.js")},require('_process'))
-},{"../../../../../allex-toolbox-dev/node_modules/is-buffer/index.js":10,"./abstract-chained-batch":56,"./abstract-iterator":57,"_process":14,"xtend":61}],59:[function(require,module,exports){
+}).call(this,{"isBuffer":require("../../../../../../../../../lib/lib/node_modules/allex-toolbox-dev/node_modules/is-buffer/index.js")},require('_process'))
+},{"../../../../../../../../../lib/lib/node_modules/allex-toolbox-dev/node_modules/is-buffer/index.js":10,"./abstract-chained-batch":56,"./abstract-iterator":57,"_process":14,"xtend":61}],59:[function(require,module,exports){
 exports.AbstractLevelDOWN    = require('./abstract-leveldown')
 exports.AbstractIterator     = require('./abstract-iterator')
 exports.AbstractChainedBatch = require('./abstract-chained-batch')
@@ -10570,7 +10621,7 @@ var checkKeyValue = Level.prototype._checkKeyValue = function (obj, type) {
 }
 
 }).call(this,require("buffer").Buffer)
-},{"./iterator":76,"abstract-leveldown":51,"buffer":5,"idb-wrapper":65,"isbuffer":68,"typedarray-to-buffer":97,"util":31,"xtend":99}],76:[function(require,module,exports){
+},{"./iterator":76,"abstract-leveldown":51,"buffer":5,"idb-wrapper":65,"isbuffer":68,"typedarray-to-buffer":97,"util":30,"xtend":99}],76:[function(require,module,exports){
 var util = require('util')
 var AbstractIterator  = require('abstract-leveldown').AbstractIterator
 var ltgt = require('ltgt')
@@ -10644,7 +10695,7 @@ Iterator.prototype._next = function (callback) {
   this.callback = callback
 }
 
-},{"abstract-leveldown":51,"ltgt":83,"util":31}],77:[function(require,module,exports){
+},{"abstract-leveldown":51,"ltgt":83,"util":30}],77:[function(require,module,exports){
 const levelup = require('levelup')
 
 function packager (leveldown) {
@@ -11160,7 +11211,7 @@ module.exports.repair  = deprecate(
 
 
 }).call(this,require('_process'))
-},{"./batch":78,"./util":80,"_process":14,"deferred-leveldown":55,"events":7,"level-codec":70,"level-errors":72,"level-iterator-stream":73,"prr":89,"util":31,"xtend":81}],80:[function(require,module,exports){
+},{"./batch":78,"./util":80,"_process":14,"deferred-leveldown":55,"events":7,"level-codec":70,"level-errors":72,"level-iterator-stream":73,"prr":89,"util":30,"xtend":81}],80:[function(require,module,exports){
 /* Copyright (c) 2012-2016 LevelUP contributors
  * See list at <https://github.com/level/levelup#contributing>
  * MIT License
@@ -11239,7 +11290,7 @@ module.exports = {
   , isDefined       : isDefined
 }
 
-},{"../package.json":82,"level-errors":72,"leveldown":2,"leveldown/package":2,"semver":2,"util":31,"xtend":81}],81:[function(require,module,exports){
+},{"../package.json":82,"level-errors":72,"leveldown":2,"leveldown/package":2,"semver":2,"util":30,"xtend":81}],81:[function(require,module,exports){
 arguments[4][61][0].apply(exports,arguments)
 },{"dup":61}],82:[function(require,module,exports){
 module.exports={
@@ -11254,24 +11305,24 @@ module.exports={
         "spec": ">=1.3.0 <1.4.0",
         "type": "range"
       },
-      "/home/luka/lib/node_modules/allex_leveldblib-dev/node_modules/level-packager"
+      "/Users/andra/trash/wingrofix/Engine/node_modules-dev/allex_leveldblib/node_modules/level-packager"
     ]
   ],
   "_from": "levelup@>=1.3.0 <1.4.0",
-  "_id": "levelup@1.3.2",
+  "_id": "levelup@1.3.3",
   "_inCache": true,
   "_installable": true,
   "_location": "/levelup",
-  "_nodeVersion": "6.1.0",
+  "_nodeVersion": "4.4.7",
   "_npmOperationalInternal": {
-    "host": "packages-16-east.internal.npmjs.com",
-    "tmp": "tmp/levelup-1.3.2.tgz_1463496525467_0.4644940535072237"
+    "host": "packages-12-west.internal.npmjs.com",
+    "tmp": "tmp/levelup-1.3.3.tgz_1476029541340_0.44339725002646446"
   },
   "_npmUser": {
-    "name": "ralphtheninja",
-    "email": "ralphtheninja@riseup.net"
+    "name": "juliangruber",
+    "email": "julian@juliangruber.com"
   },
-  "_npmVersion": "3.8.6",
+  "_npmVersion": "2.15.8",
   "_phantomChildren": {},
   "_requested": {
     "raw": "levelup@~1.3.0",
@@ -11285,11 +11336,11 @@ module.exports={
   "_requiredBy": [
     "/level-packager"
   ],
-  "_resolved": "https://registry.npmjs.org/levelup/-/levelup-1.3.2.tgz",
-  "_shasum": "b321d3071f0e75c2dfaf2f0fe8864e5b9a387bc9",
+  "_resolved": "https://registry.npmjs.org/levelup/-/levelup-1.3.3.tgz",
+  "_shasum": "bf9db62bdb6188d08eaaa2efcf6cc311916f41fd",
   "_shrinkwrap": null,
   "_spec": "levelup@~1.3.0",
-  "_where": "/home/luka/lib/node_modules/allex_leveldblib-dev/node_modules/level-packager",
+  "_where": "/Users/andra/trash/wingrofix/Engine/node_modules-dev/allex_leveldblib/node_modules/level-packager",
   "browser": {
     "leveldown": false,
     "leveldown/package": false,
@@ -11396,10 +11447,10 @@ module.exports={
   },
   "directories": {},
   "dist": {
-    "shasum": "b321d3071f0e75c2dfaf2f0fe8864e5b9a387bc9",
-    "tarball": "https://registry.npmjs.org/levelup/-/levelup-1.3.2.tgz"
+    "shasum": "bf9db62bdb6188d08eaaa2efcf6cc311916f41fd",
+    "tarball": "https://registry.npmjs.org/levelup/-/levelup-1.3.3.tgz"
   },
-  "gitHead": "bcc242cfc4ec035f9228a5cd54903cb126659a00",
+  "gitHead": "cced27dc9f0095823be5ed388ec601ec2bfe7366",
   "homepage": "https://github.com/level/levelup",
   "keywords": [
     "leveldb",
@@ -11436,7 +11487,7 @@ module.exports={
   "scripts": {
     "test": "tape test/*-test.js | faucet"
   },
-  "version": "1.3.2"
+  "version": "1.3.3"
 }
 
 },{}],83:[function(require,module,exports){
@@ -11492,23 +11543,23 @@ var lowerBound = exports.lowerBound = function (range) {
   return k && range[k]
 }
 
-exports.lowerBoundInclusive = function (range) {
+var lowerBoundInclusive = exports.lowerBoundInclusive = function (range) {
   return has(range, 'gt') ? false : true
 }
 
-exports.upperBoundInclusive =
+var upperBoundInclusive = exports.upperBoundInclusive =
   function (range) {
-    return has(range, 'lt') || !range.minEx ? false : true
+    return (has(range, 'lt') /*&& !range.maxEx*/) ? false : true
   }
 
 var lowerBoundExclusive = exports.lowerBoundExclusive =
   function (range) {
-    return has(range, 'gt') || range.minEx ? true : false
+    return !lowerBoundInclusive(range)
   }
 
 var upperBoundExclusive = exports.upperBoundExclusive =
   function (range) {
-    return has(range, 'lt') ? true : false
+    return !upperBoundInclusive(range)
   }
 
 var upperBoundKey = exports.upperBoundKey = function (range) {
@@ -11588,8 +11639,13 @@ exports.filter = function (range, compare) {
   }
 }
 
-}).call(this,{"isBuffer":require("../../../allex-toolbox-dev/node_modules/is-buffer/index.js")})
-},{"../../../allex-toolbox-dev/node_modules/is-buffer/index.js":10}],84:[function(require,module,exports){
+
+
+
+
+
+}).call(this,{"isBuffer":require("../../../../../../../lib/lib/node_modules/allex-toolbox-dev/node_modules/is-buffer/index.js")})
+},{"../../../../../../../lib/lib/node_modules/allex-toolbox-dev/node_modules/is-buffer/index.js":10}],84:[function(require,module,exports){
 (function (process){
 var path = require('path');
 var fs = require('fs');
@@ -14256,4 +14312,4 @@ function createKnownLengthInsertJob(execlib, JobBase) {
 
 module.exports = createKnownLengthInsertJob;
 
-},{}]},{},[32]);
+},{}]},{},[31]);
