@@ -7,15 +7,15 @@ function createDBArray(execlib, leveldblib) {
   function keyEncodingFor(indexsize) {
     switch(indexsize) {
       case 'tiny':
-        return leveldblib.Int8Codec;
+        return leveldblib.ByteCodec;
       case 'short':
-        return leveldblib.Int16Codec;
+        return leveldblib.Int16BECodec;
       case 'standard':
-        return leveldblib.Int32Codec;
+        return leveldblib.Int32BECodec;
       case 'big':
-        return leveldblib.Int64Codec;
+        return leveldblib.Int64BECodec;
       default:
-        return leveldblib.Int32Codec;
+        return leveldblib.Int32BECodec;
     }
   }
 
