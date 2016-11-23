@@ -6,7 +6,8 @@ function createHookableUserSessionMixin (execlib) {
 
   function HookableUserSessionMixin (leveldb) {
     this.leveldb = leveldb;
-    this.dbkeys = null;
+    this.isAllPass = false;
+    this.dbkeys = [];
     this.dbOpListener = null;
   }
 
@@ -18,7 +19,9 @@ function createHookableUserSessionMixin (execlib) {
       '_unhook',
       'unhook',
       'stopListening',
-      'onLevelDBDataChanged'
+      'onLevelDBDataChanged',
+      'pickFromLevelDBAndReport',
+      'isKeyValHashOk'
     );
   };
 
@@ -30,34 +33,78 @@ function createHookableUserSessionMixin (execlib) {
       this.dbOpListener.destroy();
     }
     this.dbOpListener = null;
+    this.isAllPass = null;
     this.leveldb = null;
   };
 
   HookableUserSessionMixin.prototype.hook = function (hookobj, defer) {
-    var doscan = hookobj.scan, dbkeys = hookobj.accounts || hookobj.keys, checkforlistener = false, d, pser;
+    var doscan = hookobj.scan,
+      dbkeys = hookobj.accounts || hookobj.keys,
+      checkforlistener = false,
+      d,
+      pser,
+      isallpass;
     if (!lib.isArray(dbkeys)) {
       defer.resolve(true);
-    }
-    if (dbkeys.indexOf(HookableUserSessionMixin.ALL_KEYS) >= 0) {
-      this.dbkeys = true;
-      checkforlistener = true;
     } else {
-      this.dbkeys = this.dbkeys || [];
+      isallpass = dbkeys.indexOf(HookableUserSessionMixin.ALL_KEYS) >= 0;
       lib.arryOperations.appendNonExistingItems(this.dbkeys, dbkeys);
-      checkforlistener = this.dbkeys.length>0;
     }
+    if (isallpass) {
+      this.isAllPass = true;
+    }
+    checkforlistener = this.dbkeys.length>0;
     if (checkforlistener) {
       if (doscan) {
         pser = this.postScan.bind(this, defer, checkforlistener);
-        this.leveldb.traverse(this.onScan.bind(this), {}).then(
+        if (isallpass) {
+          this.leveldb.traverse(this.onScan.bind(this), {}).then(
+            pser,
+            pser
+          );
+        } else {
+         this.pickFromLevelDBAndReport(dbkeys).then(
           pser,
           pser
-        );
+         ) 
+        }
       } else {
         this.postScan(defer, checkforlistener);
       }
     }
     defer = null;
+  };
+
+  HookableUserSessionMixin.prototype.pickFromLevelDBAndReport = function (dbkeys, defer) {
+    var dbkey = dbkeys.shift(),
+      pflar,
+      oldc = this.onLevelDBDataChanged.bind(this);
+    defer = defer || q.defer();
+    if (!dbkey) {
+      return defer.promise;
+    }
+    if (dbkeys.length>0) {
+      pflar = this.pickFromLevelDBAndReport.bind(this, dbkeys, defer);
+    } else {
+      pflar = defer.resolve.bind(defer, true);
+    }
+    this.leveldb.get(dbkey).then(function (val) {
+      oldc(dbkey, val);
+      if (pflar) {
+        pflar();
+        pflar = null;
+      }
+      dbkey = null;
+      oldc = null;
+    }, function (reason) {
+      if (pflar) {
+        pflar();
+        pflar = null;
+      }
+      dbkey = null;
+      oldc = null;
+    });
+    return defer.promise;
   };
 
   HookableUserSessionMixin.prototype.onScan = function (keyvalhash) {
@@ -78,18 +125,21 @@ function createHookableUserSessionMixin (execlib) {
     defer = null;
   };
 
-  HookableUserSessionMixin.prototype._unhook = function (accountname){
-    var ind;
+  HookableUserSessionMixin.prototype._unhook = function (keyname){
+    var ind, isallkeys = keyname === HookableUserSessionMixin.ALL_KEYS;
     if (!this.dbkeys) {
       return;
     }
+    if (isallkeys) {
+      this.isAllPass = false;
+    }
     if (this.dbkeys === true) {
-      if (accountname === HookableUserSessionMixin.ALL_KEYS) {
+      if (isallkeys) {
         this.stopListening();
       }
       return;
     }
-    ind = this.dbkeys.indexOf(accountname);
+    ind = this.dbkeys.indexOf(keyname);
     if (ind >= 0) {
       this.dbkeys.splice(ind, 1);
     }
@@ -106,7 +156,7 @@ function createHookableUserSessionMixin (execlib) {
     if (!this.dbkeys) {
       this.stopListening();
     }
-    defer.resolve('ok');
+    defer.resolve(true);
     defer = null;
   };
 
@@ -119,11 +169,15 @@ function createHookableUserSessionMixin (execlib) {
   };
 
   HookableUserSessionMixin.prototype.onLevelDBDataChanged = function (key, value) {
+    console.log('onLevelDBDataChanged', key, value);
     this.sendOOB('l',[key, value]);
   };
 
   HookableUserSessionMixin.prototype.isKeyValHashOk = function (keyvalhash) {
-    return true;
+    if (this.isAllPass) {
+      return true;
+    }
+    return this.dbkeys.indexOf(keyvalhash.key) >= 0
   };
 
   HookableUserSessionMixin.__methodDescriptors = {
