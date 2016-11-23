@@ -34,7 +34,7 @@ function createHookableUserSessionMixin (execlib) {
   };
 
   HookableUserSessionMixin.prototype.hook = function (hookobj, defer) {
-    var doscan = hookobj.scan, dbkeys = hookobj.accounts, checkforlistener = false, d, pser;
+    var doscan = hookobj.scan, dbkeys = hookobj.accounts || hookobj.keys, checkforlistener = false, d, pser;
     if (!lib.isArray(dbkeys)) {
       defer.resolve(true);
     }
@@ -60,9 +60,10 @@ function createHookableUserSessionMixin (execlib) {
     defer = null;
   };
 
-  HookableUserSessionMixin.prototype.onScan = function (accounthash) {
-    console.log('onScan', accounthash);
-    this.onLevelDBDataChanged(accounthash.key, accounthash.value);
+  HookableUserSessionMixin.prototype.onScan = function (keyvalhash) {
+    if (this.isKeyValHashOk(keyvalhash)) {
+      this.onLevelDBDataChanged(keyvalhash.key, keyvalhash.value);
+    }
   };
 
   HookableUserSessionMixin.prototype.postScan = function (defer, checkforlistener) {
@@ -119,6 +120,10 @@ function createHookableUserSessionMixin (execlib) {
 
   HookableUserSessionMixin.prototype.onLevelDBDataChanged = function (key, value) {
     this.sendOOB('l',[key, value]);
+  };
+
+  HookableUserSessionMixin.prototype.isKeyValHashOk = function (keyvalhash) {
+    return true;
   };
 
   HookableUserSessionMixin.__methodDescriptors = {
