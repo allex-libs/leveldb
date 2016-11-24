@@ -169,7 +169,6 @@ function createHookableUserSessionMixin (execlib) {
   };
 
   HookableUserSessionMixin.prototype.onLevelDBDataChanged = function (key, value) {
-    console.log('onLevelDBDataChanged', key, value);
     this.sendOOB('l',[key, value]);
   };
 
