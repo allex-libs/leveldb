@@ -32,6 +32,10 @@ function realCreator(execlib, datafilterslib, bufferlib) {
     UInt32BECodec: require('./codecs/uint32becodeccreator')(execlib, numchecker),
     Int32LECodec: require('./codecs/int32lecodeccreator')(execlib, numchecker),
     Int32BECodec: require('./codecs/int32becodeccreator')(execlib, numchecker),
+    UInt48LECodec: require('./codecs/uint48lecodeccreator')(execlib, numchecker),
+    UInt48BECodec: require('./codecs/uint48becodeccreator')(execlib, numchecker),
+    Int48LECodec: require('./codecs/int48lecodeccreator')(execlib, numchecker),
+    Int48BECodec: require('./codecs/int48becodeccreator')(execlib, numchecker),
     Int64Codec: require('./codecs/int64codeccreator')(execlib, numchecker)
   };
 

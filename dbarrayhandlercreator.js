@@ -9,13 +9,13 @@ function createDBArray(execlib, leveldblib) {
       case 'tiny':
         return leveldblib.ByteCodec;
       case 'short':
-        return leveldblib.Int16BECodec;
+        return leveldblib.UInt16BECodec;
       case 'standard':
-        return leveldblib.Int32BECodec;
+        return leveldblib.UInt32BECodec;
       case 'big':
-        return leveldblib.Int64Codec;
+        return leveldblib.UInt48BECodec;
       default:
-        return leveldblib.Int32BECodec;
+        return leveldblib.UInt32BECodec;
     }
   }
 
