@@ -71,6 +71,17 @@ function createDBHandler (execlib, datafilterslib, encodingMakeup) {
     dbh = null;
   };
 
+  function checkEncodings(hash) {
+    if (!hash) {
+      return;
+    }
+    if (hash.hasOwnProperty('keyEncoding') && !hash.keyEncoding) {
+      throw new Error('Invalid keyEncoding');
+    }
+    if (hash.hasOwnProperty('valueEncoding') && !hash.valueEncoding) {
+      throw new Error('Invalid valueEncoding');
+    }
+  }
 
   function LevelDBHandler(prophash) {
     var err;
@@ -85,6 +96,7 @@ function createDBHandler (execlib, datafilterslib, encodingMakeup) {
         throw err;
       }
     }
+    checkEncodings(prophash.dbcreationoptions);
     this.db = null;
     this.put = null;
     this.get = null;
