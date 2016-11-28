@@ -36,7 +36,10 @@ function realCreator(execlib, datafilterslib, bufferlib) {
     UInt48BECodec: require('./codecs/uint48becodeccreator')(execlib, numchecker),
     Int48LECodec: require('./codecs/int48lecodeccreator')(execlib, numchecker),
     Int48BECodec: require('./codecs/int48becodeccreator')(execlib, numchecker),
-    Int64Codec: require('./codecs/int64codeccreator')(execlib, numchecker)
+    UInt64BECodec: require('./codecs/uint64becodeccreator')(execlib, numchecker),
+    UInt64LECodec: require('./codecs/uint64lecodeccreator')(execlib, numchecker),
+    Int64BECodec: require('./codecs/int64becodeccreator')(execlib, numchecker),
+    Int64LECodec: require('./codecs/int64lecodeccreator')(execlib, numchecker)
   };
 
   encodingMakeup = require('./encodingmakeupcreator')(execlib, ret, bufferlib);

@@ -15,7 +15,8 @@
   },
   "dependencies": {
     "level-browserify": "1.1.0",
-    "mkdirp": "0.5.x"
+    "mkdirp": "0.5.x",
+    "node-int64": "0.4.x"
   },
   "keywords": [
     "AllexJS",

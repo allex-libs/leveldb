@@ -14,6 +14,8 @@ function createDBArray(execlib, leveldblib) {
         return leveldblib.UInt32BECodec;
       case 'big':
         return leveldblib.UInt48BECodec;
+      case 'huge':
+        return leveldblib.UInt64BECodec;
       default:
         return leveldblib.UInt32BECodec;
     }
