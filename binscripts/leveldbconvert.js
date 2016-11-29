@@ -75,6 +75,12 @@ function go(execlib, originaldbname, convertor, bufferlib, leveldblib) {
     dbname: originaldbname,
     starteddefer: d
   };
+  if (execlib.lib.isFunction(convertor.createConvertor)) {
+    convertor.convertor = convertor.createConvertor(execlib, bufferlib, leveldblib);
+  }
+  if(!execlib.lib.isFunction(convertor.convertor)) {
+    return printConvertorNote();
+  }
   if (execlib.lib.isFunction(convertor.inOptionsCreator)) {
     openhash.dbcreationoptions = convertor.inOptionsCreator(execlib, bufferlib, leveldblib);
   }
@@ -100,12 +106,6 @@ module.exports = function (execlib) {
     return printUsage();
   }
   convertor = require(Path.join(process.cwd(), convertscript));
-  if (lib.isFunction(convertor.createConvertor)) {
-    convertor.convertor = convertor.createConvertor(execlib);
-  }
-  if(!lib.isFunction(convertor.convertor)) {
-    return printConvertorNote();
-  }
   libRegistry = execlib.execSuite.libRegistry;
 
   new execlib.lib.qlib.PromiseExecutionMapReducerJob([
