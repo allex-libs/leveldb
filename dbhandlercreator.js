@@ -15,6 +15,8 @@ function createDBHandler (execlib, datafilterslib, encodingMakeup) {
     if (err && err.code && err.code === 'ENOENT') {
       pa = err.path.split(Path.sep);
       console.log(pa);
+      defer.reject(err);
+      defer = null;
       return;
     }
     defer.resolve(true);
@@ -192,10 +194,19 @@ function createDBHandler (execlib, datafilterslib, encodingMakeup) {
       return;
     }
     if (err) {
+      if (prophash.debugcreation) {
+        console.error(err);
+      }
       if(err.message && /IO error.*LOCK/.test(err.message)) {
-        preparePath(prophash.dbname).then(
-          this.createDB.bind(this, prophash)
-        );
+        if (/already held by process/.test(err.message)) {
+          console.error(process.pid + ' ' + prophash.dbname, 'is currently used by another process');
+          lib.runNext(this.createDB.bind(this, prophash), 1000);
+        } else {
+          preparePath(prophash.dbname).then(
+            this.createDB.bind(this, prophash),
+            this.destroy.bind(this)
+          );
+        }
         return;
       }
       console.error(prophash.dbname, 'could not be started now', err);
