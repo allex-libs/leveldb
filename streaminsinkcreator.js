@@ -14,7 +14,13 @@ function createStreamInSink(execlib) {
 
   return function (sink, method, options, itemcb, pagecb) {
     var d = q.defer();
-    var sd = sink.call(method, options);
+    var sd;
+    if (execlib.lib.isArray(options)) {
+      options.unshift(method);
+      sd = sink.call.apply(sink, options)
+    } else {
+      sd = sink.call(method, options);
+    } 
     sd.then(
       d.resolve.bind(d),
       d.reject.bind(d),
