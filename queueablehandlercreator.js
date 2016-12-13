@@ -49,13 +49,23 @@ function createQueueableHandler(execlib, leveldblib) {
   };
   function putter(batch, item) {
     var operationname = item[0],
-      operation = batch[operationname];
+      operation = batch[operationname],
+      defer = item[2];
     if (operation) {
       //console.log(operationname, 'for batch', item[1]);
+      try {
       operation.apply(batch, item[1]);
+      } catch (e) {
+        if (defer) {
+          defer.reject(e);
+        } else {
+          throw e;
+        }
+      }
     }
   }
   QueueableDBHandler.prototype.processQ = function (_q) {
+    var ret, batch;
     if (this._busy) {
       console.trace();
       console.log(this.dbname, 'BUSYYYYYY');
@@ -66,11 +76,19 @@ function createQueueableHandler(execlib, leveldblib) {
     }
     //console.log('processQ', _q.length);
     this.begin();
-    var batch = this.db.batch();
-    consume(_q, putter.bind(null, batch));
-    batch.write(this.finish.bind(this, _q));
+    ret = this._busy.promise;
+    batch = this.db.batch();
+    try {
+      consume(_q, putter.bind(null, batch));
+    } catch (e) {
+      this._busy.reject(e);
+      this._busy = null;
+    }
+    if (this._busy) {
+      batch.write(this.finish.bind(this, _q));
+    }
     batch = null;
-    return this._busy.promise;
+    return ret;
   };
   QueueableDBHandler.consume = consume;
 
