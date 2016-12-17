@@ -1,4 +1,4 @@
-function createHookableUserSessionMixin (execlib) {
+function createHookableUserSessionMixin (execlib, Hook) {
   'use strict';
 
   var lib = execlib.lib,
