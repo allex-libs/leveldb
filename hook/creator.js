@@ -1,14 +1,19 @@
 function createHook (execlib) {
   'use strict';
   var lib = execlib.lib,
-    q = lib.q;
+    q = lib.q,
+    KeysHandler = require('./keyshandlercreator')(execlib);
 
 
-  function Hook (leveldb) {
-    this.leveldb = leveldb;
+  function Hook (prophash) {
+    if (!prophash.leveldb) {
+      throw new lib.Error('NO_LEVELDB_TO_HOOK_ON', 'Property hash has to have a leveldb property');
+    }
+    this.leveldb = prophash.leveldb;
     this.isAllPass = false;
-    this.dbkeys = [];
+    this.keys = new KeysHandler();
     this.dbOpListener = null;
+    this.cb = prophash.cb;
   }
 
   Hook.addMethods = function (klass) {
@@ -21,14 +26,16 @@ function createHook (execlib) {
       'stopListening',
       'onLevelDBDataChanged',
       'pickFromLevelDBAndReport',
-      'isKeyValHashOk'
+      'isKeyValHashOk',
+      'isKeyOk',
+      'unhook'
     );
   };
 
-  Hook.ALL_KEYS = '***';
+  Hook.ALL_KEYS = KeysHandler.ALL_KEYS;
 
   Hook.prototype.destroy = function () {
-    this.dbkeys = null;
+    this.cb = null;
     if (this.dbOpListener) {
       this.dbOpListener.destroy();
     }
@@ -41,49 +48,42 @@ function createHook (execlib) {
     var doscan = hookobj.scan,
       dbkeys = hookobj.accounts || hookobj.keys,
       checkforlistener = false,
-      d,
+      nkh,
       pser,
-      isallpass;
-    if (!lib.isArray(dbkeys)) {
+      ret;
+    defer = defer || q.defer();
+    ret = defer.promise;
+    nkh = this.keys.add(dbkeys);
+    if (!nkh) {
       defer.resolve(true);
-    } else {
-      isallpass = dbkeys.indexOf(Hook.ALL_KEYS) >= 0;
-      lib.arryOperations.appendNonExistingItems(this.dbkeys, dbkeys);
     }
-    if (isallpass) {
-      this.isAllPass = true;
-    }
-    checkforlistener = this.dbkeys.length>0;
-    if (checkforlistener) {
-      if (doscan) {
-        pser = this.postScan.bind(this, defer, checkforlistener);
-        if (isallpass) {
-          this.leveldb.traverse(this.onScan.bind(this), {}).then(
-            pser,
-            pser
-          );
-        } else {
-         this.pickFromLevelDBAndReport(dbkeys).then(
+    if (doscan) {
+      pser = this.postScan.bind(this, defer);
+      if (nkh.isAllPass) {
+        this.leveldb.traverse(this.onScan.bind(this), {}).then(
           pser,
           pser
-         ) 
-        }
+        );
       } else {
-        this.postScan(defer, checkforlistener);
+       this.pickFromLevelDBAndReport(dbkeys).then(
+        pser,
+        pser
+       ) 
       }
+    } else {
+      this.postScan(defer);
     }
     defer = null;
+    return ret;
   };
 
   Hook.prototype.pickFromLevelDBAndReport = function (dbkeys, defer) {
-    var dbkey = dbkeys.shift(),
+    var dbkl = dbkeys.length,
+      dbkey = dbkeys.shift(),
       pflar,
       oldc = this.onLevelDBDataChanged.bind(this);
     defer = defer || q.defer();
-    if (!dbkey) {
-      return defer.promise;
-    }
-    if (dbkeys.length>0) {
+    if (dbkl>0) {
       pflar = this.pickFromLevelDBAndReport.bind(this, dbkeys, defer);
     } else {
       pflar = defer.resolve.bind(defer, true);
@@ -113,39 +113,31 @@ function createHook (execlib) {
     }
   };
 
-  Hook.prototype.postScan = function (defer, checkforlistener) {
-    if (checkforlistener) {
-      if ( !this.dbOpListener && this.leveldb && this.leveldb.opEvent ) {
-        this.dbOpListener = this.leveldb.opEvent.attach(this.onLevelDBDataChanged.bind(this));
-      }
-    } else {
+  Hook.prototype.postScan = function (defer) {
+    if (this.keys.isEmpty()) {
+      console.log('keys', this.keys, 'isEmpty');
       this.stopListening();
+    } else {
+      if ( !this.dbOpListener && this.leveldb) {
+        if ( this.leveldb.opEvent ) {
+          this.dbOpListener = this.leveldb.opEvent.attach(this.onLevelDBDataChanged.bind(this));
+        } else {
+          console.warn('LevelDB instance is not waitable!');
+        }
+      }
     }
     defer.resolve(true);
     defer = null;
   };
 
-  Hook.prototype._unhook = function (keyname){
-    var ind, isallkeys = keyname === Hook.ALL_KEYS;
-    if (!this.dbkeys) {
-      return;
-    }
-    if (isallkeys) {
-      this.isAllPass = false;
-    }
-    if (this.dbkeys === true) {
-      if (isallkeys) {
-        this.stopListening();
-      }
-      return;
-    }
-    ind = this.dbkeys.indexOf(keyname);
-    if (ind >= 0) {
-      this.dbkeys.splice(ind, 1);
-    }
+  Hook.prototype._unhook = function (key){
+    this.keys.remove(key);
   };
 
   Hook.prototype.unhook = function (dbkeys, defer) {
+    var ret;
+    defer = defer || q.defer();
+    ret = defer.promise;
     if (!lib.isArray(dbkeys)) {
       this.stopListening();
       defer.resolve(true);
@@ -153,11 +145,12 @@ function createHook (execlib) {
       return;
     }
     dbkeys.forEach (this._unhook.bind(this));
-    if (!this.dbkeys) {
+    if (this.keys.isEmpty()) {
       this.stopListening();
     }
     defer.resolve(true);
     defer = null;
+    return ret;
   };
 
   Hook.prototype.stopListening = function () {
@@ -169,42 +162,20 @@ function createHook (execlib) {
   };
 
   Hook.prototype.onLevelDBDataChanged = function (key, value) {
-    this.sendOOB('l',[key, value]);
+    if (this.cb && this.isKeyOk(key)) {
+      this.cb(key, value);
+    }
   };
 
   Hook.prototype.isKeyValHashOk = function (keyvalhash) {
     if (this.isAllPass) {
       return true;
     }
-    return this.dbkeys.indexOf(keyvalhash.key) >= 0
+    return this.isKeyOk(keyvalhash.key);
   };
 
-  Hook.__methodDescriptors = {
-    unhook: [{
-      title: 'Unhook',
-      type: 'array',
-      items: {
-        'type': 'string'
-      },
-      required: false
-    }],
-    hook : [{
-      title: 'Hook',
-      type: 'object',
-      properties : {
-        scan : {
-          type : 'boolean',
-        },
-        accounts : {
-          type : 'array',
-          items : {
-            type : 'string'
-          }
-        }
-      },
-      required: ['accounts'],
-      additionalProperties : false
-    }]
+  Hook.prototype.isKeyOk = function (key) {
+    return this.keys.isOk(key);
   };
 
   return Hook;

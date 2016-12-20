@@ -1,27 +1,12 @@
-var chai = require('chai'),
-  execlib = require('allex'),
-  lib = execlib.lib,
-  LibPromise = require('../')(execlib, require('allex_datafilterslib')(execlib)),
+var Path = require('path'),
   RTToolbox = require('allex-rt-toolbox'),
-  Fs = RTToolbox.node.Fs,
-  q = lib.q,
-  Path = require('path'),
-  Lib = null;
-
-chai.use (require('chai-as-promised'));
-
-var expect = chai.expect;
-
-
-before(function () {
-  LibPromise.done (function (data) {
-    Lib = data;
-  });
-  return LibPromise;
-});
+  Fs = RTToolbox.node.Fs;
 
 describe ('LevelDBHandler test', function () {
   var DB = null;
+  it ('Load library', function () {
+    return setGlobal('Lib', require('..')(execlib));
+  });
   it ('Test creation', function (done) {
     var LevelDBHandler = Lib.LevelDBHandler,
       starteddefer = q.defer();
