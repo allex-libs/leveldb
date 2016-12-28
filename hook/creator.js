@@ -57,7 +57,7 @@ function createHook (execlib) {
     if (!nkh) {
       defer.resolve(true);
     }
-    if (doscan) {
+    if (nkh && doscan) { //with this `if`, if no new keys are found, no rescanning will be done. Problem?
       pser = this.postScan.bind(this, defer);
       if (nkh.isAllPass) {
         this.leveldb.traverse(this.onScan.bind(this), {}).then(

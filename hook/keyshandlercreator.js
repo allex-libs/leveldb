@@ -103,6 +103,7 @@ function createKeyHandler (execlib) {
   KeysHandler.prototype.possiblyNewKey = function (res, key) {
     var kh;
     if (this.handlers.some(handlerHasKey.bind(null, key))) {
+      //console.log('already handling key', key);
       return res;
     }
     kh = keyHandlerFactory(key);
