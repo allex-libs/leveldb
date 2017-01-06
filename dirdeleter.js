@@ -61,12 +61,17 @@ function createDirDeleter(execlib) {
     if (stats.isDirectory()) {
       (new DirDeleter(fsitempath, defer)).go();
     } else {
-      fs.unlink(fsitempath, this.onUnlinked.bind(this, defer));
+      this.unlink(fsitempath, defer);
     }
   };
-  DirDeleter.prototype.onUnlinked = function (defer, err) {
+  DirDeleter.prototype.unlink = function (fsitempath, defer) {
+    fs.unlink(fsitempath, this.onUnlinked.bind(this, fsitempath, defer));
+  };
+  DirDeleter.prototype.onUnlinked = function (fsitempath, defer, err) {
     if (err) {
-      defer.reject(err);
+      //defer.reject(err);
+      console.error('err', err, 'will retry');
+      lib.runNext(this.unlink.bind(this, fsitempath, defer), 100);
     } else {
       defer.resolve(true);
     }
