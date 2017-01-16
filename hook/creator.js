@@ -1,8 +1,8 @@
-function createHook (execlib) {
+function createHook (execlib, datafilterslib) {
   'use strict';
   var lib = execlib.lib,
     q = lib.q,
-    KeysHandler = require('./keyshandlercreator')(execlib);
+    KeysHandler = require('./keyshandlercreator')(execlib, datafilterslib);
 
 
   function Hook (prophash) {
@@ -46,7 +46,7 @@ function createHook (execlib) {
 
   Hook.prototype.hook = function (hookobj, defer) {
     var doscan = hookobj.scan,
-      dbkeys = hookobj.accounts || hookobj.keys,
+      dbkeys = hookobj.accounts || hookobj.keys || hookobj.filter,
       checkforlistener = false,
       nkh,
       pser,
@@ -162,7 +162,7 @@ function createHook (execlib) {
   };
 
   Hook.prototype.onLevelDBDataChanged = function (key, value) {
-    if (this.cb && this.isKeyOk(key)) {
+    if (this.cb && this.isKeyValHashOk({key:key, value:value})) {
       this.cb(key, value);
     }
   };
@@ -171,7 +171,7 @@ function createHook (execlib) {
     if (this.isAllPass) {
       return true;
     }
-    return this.isKeyOk(keyvalhash.key);
+    return this.keys.isKeyValHashOk(keyvalhash);
   };
 
   Hook.prototype.isKeyOk = function (key) {

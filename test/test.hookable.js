@@ -89,4 +89,39 @@ describe ('Hook on 2-segment key DB', function () {
     key: ['?', '1'],
     value: '5'
   });
+  /*
+  it('destroy Hook1', function () {
+    Hook1.destroy();
+  });
+  */
+  createLevelDBHookIt({
+    instancename: 'Hook2',
+    leveldb: 'db',
+    hookTo: {filter:{
+      keys: {op: 'and', filters: [{
+        op: 'eq', field: 0, value: 'a'
+      },{
+        op: 'eq', field: 1, value: '1'
+      }
+      ]},
+      values: {op: 'and', filters: [{
+        op: 'gte', field: 'blah', value: 1
+      },{
+        op: 'lte', field: 'blah', value: 5
+      }]
+      }
+    }, scan: true}
+  });
+  createWriteAndGetInHookIt({
+    hookname: 'Hook2',
+    dbname: 'db',
+    key: ['a', '1'],
+    value: {blah: 3}
+  });
+  createWriteAndNotGetInHookIt({
+    hookname: 'Hook2',
+    dbname: 'db',
+    key: ['b', '1'],
+    value: {blah: 7}
+  });
 });

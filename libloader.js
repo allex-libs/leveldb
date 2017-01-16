@@ -61,7 +61,7 @@ function realCreator(execlib, datafilterslib, bufferlib) {
   ret.FiniteLengthInsertJob = require('./transactions/finitelengthinsertjobcreator')(execlib, ret.KnownLengthInsertJob);
   ret.ChainedOperationsJob = require('./transactions/chainedoperationsjobcreator')(execlib, qlib.JobBase);
   ret.ServiceUserMixin = require('./serviceusermixincreator')(execlib, datafilterslib);
-  require('./hook')(execlib, ret);
+  require('./hook')(execlib, ret, datafilterslib);
   ret.streamInSink = require('./streaminsinkcreator')(execlib);
   ret.enhanceSink = function(sinkklass) {
     sinkklass.prototype.ClientUser.prototype.__methodDescriptors.resumeLevelDBStream = require('./resumeleveldbstreamdescriptor');
