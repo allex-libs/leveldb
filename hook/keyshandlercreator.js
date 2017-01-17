@@ -131,7 +131,6 @@ function createKeyHandler (execlib, datafilterslib) {
       return new ComplexKeyHandler(key);
     }
     if (isAFilterKey(key)) {
-      console.log('returning new FilterKeyHandler');
       return new FilterKeyHandler(key);
     }
   }
@@ -173,7 +172,10 @@ function createKeyHandler (execlib, datafilterslib) {
     var newkeys, nkh;
     if (isAFilterKey(keys)) {
       this.handlers.push(new FilterKeyHandler(keys));
-      return null;
+      return {
+        filter: keys.values,
+        keyfilter: keys.keys
+      };
     }
     if (!lib.isArray(keys)) {
       return null;

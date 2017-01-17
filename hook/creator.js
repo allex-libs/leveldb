@@ -26,6 +26,7 @@ function createHook (execlib, datafilterslib) {
       'stopListening',
       'onLevelDBDataChanged',
       'pickFromLevelDBAndReport',
+      'pickFromLevelDBAndReportForArrayDBKeys',
       'isKeyValHashOk',
       'isKeyOk',
       'unhook'
@@ -65,7 +66,7 @@ function createHook (execlib, datafilterslib) {
           pser
         );
       } else {
-       this.pickFromLevelDBAndReport(dbkeys).then(
+       this.pickFromLevelDBAndReport(nkh, dbkeys).then(
         pser,
         pser
        ) 
@@ -77,14 +78,20 @@ function createHook (execlib, datafilterslib) {
     return ret;
   };
 
-  Hook.prototype.pickFromLevelDBAndReport = function (dbkeys, defer) {
+  Hook.prototype.pickFromLevelDBAndReport = function (nkhorfilters, dbkeys) {
+    if (lib.isArray(dbkeys)) {
+      return this.pickFromLevelDBAndReportForArrayDBKeys(dbkeys);
+    }
+    return this.leveldb.traverse(this.onScan.bind(this), nkhorfilters);
+  };
+  Hook.prototype.pickFromLevelDBAndReportForArrayDBKeys = function (dbkeys, defer) {
     var dbkl = dbkeys.length,
       dbkey = dbkeys.shift(),
       pflar,
       oldc = this.onLevelDBDataChanged.bind(this);
     defer = defer || q.defer();
     if (dbkl>0) {
-      pflar = this.pickFromLevelDBAndReport.bind(this, dbkeys, defer);
+      pflar = this.pickFromLevelDBAndReportForArrayDBKeys.bind(this, dbkeys, defer);
     } else {
       pflar = defer.resolve.bind(defer, true);
     }
@@ -108,9 +115,9 @@ function createHook (execlib, datafilterslib) {
   };
 
   Hook.prototype.onScan = function (keyvalhash) {
-    if (this.isKeyValHashOk(keyvalhash)) {
+    //if (this.isKeyValHashOk(keyvalhash)) {
       this.onLevelDBDataChanged(keyvalhash.key, keyvalhash.value);
-    }
+    //}
   };
 
   Hook.prototype.postScan = function (defer) {

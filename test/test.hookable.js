@@ -89,11 +89,9 @@ describe ('Hook on 2-segment key DB', function () {
     key: ['?', '1'],
     value: '5'
   });
-  /*
   it('destroy Hook1', function () {
     Hook1.destroy();
   });
-  */
   createLevelDBHookIt({
     instancename: 'Hook2',
     leveldb: 'db',

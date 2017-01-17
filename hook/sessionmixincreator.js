@@ -36,9 +36,10 @@ function createHookableUserSessionMixin (execlib, Hook) {
     hook : [{
       title: 'Hook',
       type: 'object',
-      oneOf : [
+      anyOf : [
          { '$ref' : '#/definitions/propswithaccounts'},
-         { '$ref' : '#/definitions/propswithkeys'}
+         { '$ref' : '#/definitions/propswithkeys'},
+         { '$ref' : '#/definitions/propswithfilter'}
       ],
       definitions: {
         propswithaccounts : {
@@ -73,6 +74,21 @@ function createHookableUserSessionMixin (execlib, Hook) {
           },
           required: ['keys'],
           additionalProperties : false
+        },
+        propswithfilter: {
+          properties: {
+            scan: {
+              type: 'boolean'
+            },
+            filter: {
+              type: 'object',
+              properties: {
+                values: {
+                  type: 'object'
+                }
+              }
+            }
+          }
         }
       }
     }]
