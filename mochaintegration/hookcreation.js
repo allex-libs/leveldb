@@ -24,6 +24,15 @@ HookHandlerBase.prototype.onHookData = function () {
     this.defer = null;
   }
 };
+HookHandlerBase.prototype.onLogHookData = function () {
+  if (this.cb) {
+    this.cb.apply(null, arguments);
+  }
+  if (this.defer) {
+    this.defer.resolve(this.hookDataArgs2Defer(arguments));
+    this.defer = null;
+  }
+};
 HookHandlerBase.prototype.wait = function () {
   if (this.defer) {
     this.defer.resolve([]);
@@ -45,7 +54,11 @@ function HookHandler(ctor, creationhash) {
     this._hook.hook(creationhash.hookTo).then(
       creationhash.starteddefer.resolve.bind(creationhash.starteddefer, this)
     );
-  } else {
+  } else if (creationhash.hookToLog) {
+    this._hook.hookToLog(creationhash.hookToLog).then(
+      creationhash.starteddefer.resolve.bind(creationhash.starteddefer, this)
+    );
+  }else {
     creationhash.starteddefer.resolve(this);
   }
 }
@@ -70,6 +83,9 @@ HookHandler.prototype.hook = function () {
 HookHandler.prototype.unhook = function (keys) {
   return this._hook.unhook(keys);
 };
+HookHandler.prototype.unhookFroLog = function (keys) {
+  return this._hook.unhookFroLog(keys);
+};
 HookHandler.prototype.hookDataArgs2Defer = function (args) {
   return Array.prototype.slice.call(args, 0);
 };
@@ -77,10 +93,17 @@ HookHandler.prototype.hookDataArgs2Defer = function (args) {
 function SinkHookHandler (sink, creationhash) {
   HookHandlerBase.call(this, creationhash);
   this.sink = sink;
-  this.sink.consumeChannel('l', this.onHookData.bind(this));
-  this.sink.sessionCall('hook', creationhash.hookTo).then(
-    creationhash.starteddefer.resolve.bind(creationhash.starteddefer, this)
-  );
+  if (creationhash.hookTo) {
+    this.sink.consumeChannel('l', this.onHookData.bind(this));
+    this.sink.sessionCall('hook', creationhash.hookTo).then(
+      creationhash.starteddefer.resolve.bind(creationhash.starteddefer, this)
+    );
+  } else if (creationhash.hookToLog) {
+    this.sink.consumeChannel('g', this.onLogHookData.bind(this));
+    this.sink.sessionCall('hookToLog', creationhash.hookToLog).then(
+      creationhash.starteddefer.resolve.bind(creationhash.starteddefer, this)
+    );
+  }
 }
 lib.inherit(SinkHookHandler, HookHandlerBase);
 SinkHookHandler.prototype.destroy = function () {

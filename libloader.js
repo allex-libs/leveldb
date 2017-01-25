@@ -40,6 +40,7 @@ function realCreator(execlib, datafilterslib, bufferlib) {
     UInt64LECodec: require('./codecs/uint64lecodeccreator')(execlib, numchecker),
     Int64BECodec: require('./codecs/int64becodeccreator')(execlib, numchecker),
     Int64LECodec: require('./codecs/int64lecodeccreator')(execlib, numchecker),
+    Int64LegacyCodec: require('./codecs/int64codeccreator')(execlib),
     DoubleBECodec: require('./codecs/doublebecodeccreator')(execlib),
     DoubleLECodec: require('./codecs/doublelecodeccreator')(execlib)
   };

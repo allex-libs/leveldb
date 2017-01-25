@@ -61,6 +61,9 @@ function createKeyHandler (execlib, datafilterslib) {
     }
     return true;
   };
+  FilterKeyHandler.prototype.hasKey = function (key) {
+    return false; //TODO
+  };
 
   function SimpleKeyHandler (key) {
     this.key = key;
