@@ -47,12 +47,20 @@ function createQueueableHandler(execlib, leveldblib) {
     */
     this.processQ([qitem]);
   };
-  function putter(batch, item) {
+  function putter(batch, opevent, item) {
     var operationname = item[0],
       operation = batch[operationname],
       defer = item[2];
     if (operation) {
       //console.log(operationname, 'for batch', item[1]);
+      if (opevent) {
+        if (operationname === 'put') {
+          defer.promise.then(opevent.fire.bind(opevent, item[1][0], item[1][1]));
+        }
+        if (operationname === 'del') {
+          defer.promise.then(opevent.fire.bind(opevent, item[1][0]));
+        }
+      }
       try {
       operation.apply(batch, item[1]);
       } catch (e) {
@@ -79,7 +87,7 @@ function createQueueableHandler(execlib, leveldblib) {
     ret = this._busy.promise;
     batch = this.db.batch();
     try {
-      consume(_q, putter.bind(null, batch));
+      consume(_q, putter.bind(null, batch, this.opEvent));
     } catch (e) {
       this._busy.reject(e);
       this._busy = null;

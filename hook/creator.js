@@ -9,6 +9,9 @@ function createHook (execlib, datafilterslib) {
     if (!prophash.leveldb) {
       throw new lib.Error('NO_LEVELDB_TO_HOOK_ON', 'Property hash has to have a leveldb property');
     }
+    if (!prophash.leveldb.opEvent) {
+      console.error('leveldb is not listenable, will never get anything from it', prophash.leveldb);
+    }
     this.leveldb = prophash.leveldb;
     this.isAllPass = false;
     this.keys = new KeysHandler();

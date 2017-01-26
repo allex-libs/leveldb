@@ -44,6 +44,7 @@ HookHandlerBase.prototype.wait = function () {
 function HookHandler(ctor, creationhash) {
   HookHandlerBase.call(this, creationhash);
   creationhash.cb = this.onHookData.bind(this);
+  creationhash.logcb = this.onHookData.bind(this);
   this._hook = null;
   if (lib.isFunction(ctor)) {
     this._hook = new ctor(creationhash);
@@ -79,6 +80,16 @@ HookHandler.prototype.hook = function () {
     return;
   }
   return this._hook.hook.apply(this._hook, arguments);
+};
+HookHandler.prototype.hookToLog = function () {
+  if (this.defer) {
+    this.defer.reject(new lib.Error('HOOK_DYING'));
+  }
+  this.defer = null;
+  if (!this._hook) {
+    return;
+  }
+  return this._hook.hookToLog.apply(this._hook, arguments);
 };
 HookHandler.prototype.unhook = function (keys) {
   return this._hook.unhook(keys);
