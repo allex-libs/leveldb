@@ -1,7 +1,7 @@
 (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
 ALLEX.execSuite.libRegistry.register('allex_leveldblib',require('./libloader')(ALLEX, ALLEX.execSuite.libRegistry.register('allex_datafilterslib')));
 
-},{"./libloader":25}],2:[function(require,module,exports){
+},{"./libloader":31}],2:[function(require,module,exports){
 (function (Buffer){
 function createByteCodec(execlib, numchecker) {
   return {
@@ -25,7 +25,51 @@ function createByteCodec(execlib, numchecker) {
 module.exports = createByteCodec;
 
 }).call(this,require("buffer").Buffer)
-},{"buffer":92}],3:[function(require,module,exports){
+},{"buffer":102}],3:[function(require,module,exports){
+(function (Buffer){
+function createDoubleBECodec(execlib) {
+  'use strict';
+  var lib = execlib.lib;
+  return {
+    encode: function(num) {
+      var ret = new Buffer(8);
+      ret.writeDoubleBE(num);
+      return ret;
+    },
+    decode: function (buff) {
+      return buff.readDoubleBE(0);
+    },
+    buffer: true,
+    type: 'doublebe'
+  };
+}
+
+module.exports = createDoubleBECodec;
+
+}).call(this,require("buffer").Buffer)
+},{"buffer":102}],4:[function(require,module,exports){
+(function (Buffer){
+function createDoubleLECodec(execlib) {
+  'use strict';
+  var lib = execlib.lib;
+  return {
+    encode: function(num) {
+      var ret = new Buffer(8);
+      ret.writeDoubleLE(num);
+      return ret;
+    },
+    decode: function (buff) {
+      return buff.readDoubleLE(0);
+    },
+    buffer: true,
+    type: 'doublele'
+  };
+}
+
+module.exports = createDoubleLECodec;
+
+}).call(this,require("buffer").Buffer)
+},{"buffer":102}],5:[function(require,module,exports){
 (function (Buffer){
 function createInt16BECodec(execlib, numchecker) {
   return {
@@ -49,7 +93,7 @@ function createInt16BECodec(execlib, numchecker) {
 module.exports = createInt16BECodec;
 
 }).call(this,require("buffer").Buffer)
-},{"buffer":92}],4:[function(require,module,exports){
+},{"buffer":102}],6:[function(require,module,exports){
 (function (Buffer){
 function createInt16LECodec(execlib, numchecker) {
   return {
@@ -73,7 +117,7 @@ function createInt16LECodec(execlib, numchecker) {
 module.exports = createInt16LECodec;
 
 }).call(this,require("buffer").Buffer)
-},{"buffer":92}],5:[function(require,module,exports){
+},{"buffer":102}],7:[function(require,module,exports){
 (function (Buffer){
 function createInt32BECodec(execlib, numchecker) {
   'use strict';
@@ -99,7 +143,7 @@ function createInt32BECodec(execlib, numchecker) {
 module.exports = createInt32BECodec;
 
 }).call(this,require("buffer").Buffer)
-},{"buffer":92}],6:[function(require,module,exports){
+},{"buffer":102}],8:[function(require,module,exports){
 (function (Buffer){
 function createInt32LECodec(execlib, numchecker) {
   'use strict';
@@ -125,7 +169,7 @@ function createInt32LECodec(execlib, numchecker) {
 module.exports = createInt32LECodec;
 
 }).call(this,require("buffer").Buffer)
-},{"buffer":92}],7:[function(require,module,exports){
+},{"buffer":102}],9:[function(require,module,exports){
 (function (Buffer){
 function createInt48BECodec(execlib, numchecker) {
   'use strict';
@@ -148,7 +192,7 @@ function createInt48BECodec(execlib, numchecker) {
 module.exports = createInt48BECodec;
 
 }).call(this,require("buffer").Buffer)
-},{"buffer":92}],8:[function(require,module,exports){
+},{"buffer":102}],10:[function(require,module,exports){
 (function (Buffer){
 function createInt48LECodec(execlib, numchecker) {
   'use strict';
@@ -171,7 +215,7 @@ function createInt48LECodec(execlib, numchecker) {
 module.exports = createInt48LECodec;
 
 }).call(this,require("buffer").Buffer)
-},{"buffer":92}],9:[function(require,module,exports){
+},{"buffer":102}],11:[function(require,module,exports){
 var Int64 = require('node-int64');
 function createInt64BECodec(execlib) {
   return {
@@ -190,7 +234,35 @@ function createInt64BECodec(execlib) {
 
 module.exports = createInt64BECodec;
 
-},{"node-int64":62}],10:[function(require,module,exports){
+},{"node-int64":68}],12:[function(require,module,exports){
+(function (Buffer){
+function createInt64Codec(execlib) {
+  return {
+    encode: function(num) {
+      var ret = new Buffer(8),
+        hi = ~~(num / 0x100000000),
+        lo = num % 0x100000000;
+    //console.log(item, '=> lo', lo, 'hi', hi);
+      ret.writeUInt32BE(lo, 0);
+      ret.writeUInt32BE(hi, 4);
+      return ret;
+    },
+    decode: function (buff) {
+      var ret = 0,
+        lo = buff.readUInt32BE(0),
+        hi = buff.readUInt32BE(4);
+      ret += (lo);
+      ret += ( hi * 0x100000000);
+      return ret;
+    },
+    buffer: true,
+    type: 'int64'
+  };
+}
+module.exports = createInt64Codec;
+
+}).call(this,require("buffer").Buffer)
+},{"buffer":102}],13:[function(require,module,exports){
 (function (Buffer){
 var Int64 = require('node-int64');
 function mirror64 (buffer) {
@@ -224,7 +296,7 @@ function createInt64LECodec(execlib) {
 module.exports = createInt64LECodec;
 
 }).call(this,require("buffer").Buffer)
-},{"buffer":92,"node-int64":62}],11:[function(require,module,exports){
+},{"buffer":102,"node-int64":68}],14:[function(require,module,exports){
 (function (Buffer){
 function createUInt16BECodec(execlib, numchecker) {
   return {
@@ -248,7 +320,7 @@ function createUInt16BECodec(execlib, numchecker) {
 module.exports = createUInt16BECodec;
 
 }).call(this,require("buffer").Buffer)
-},{"buffer":92}],12:[function(require,module,exports){
+},{"buffer":102}],15:[function(require,module,exports){
 (function (Buffer){
 function createUInt16LECodec(execlib, numchecker) {
   return {
@@ -272,7 +344,7 @@ function createUInt16LECodec(execlib, numchecker) {
 module.exports = createUInt16LECodec;
 
 }).call(this,require("buffer").Buffer)
-},{"buffer":92}],13:[function(require,module,exports){
+},{"buffer":102}],16:[function(require,module,exports){
 (function (Buffer){
 function createUInt32BECodec(execlib, numchecker) {
   'use strict';
@@ -298,7 +370,7 @@ function createUInt32BECodec(execlib, numchecker) {
 module.exports = createUInt32BECodec;
 
 }).call(this,require("buffer").Buffer)
-},{"buffer":92}],14:[function(require,module,exports){
+},{"buffer":102}],17:[function(require,module,exports){
 (function (Buffer){
 function createUInt32LECodec(execlib, numchecker) {
   'use strict';
@@ -324,7 +396,7 @@ function createUInt32LECodec(execlib, numchecker) {
 module.exports = createUInt32LECodec;
 
 }).call(this,require("buffer").Buffer)
-},{"buffer":92}],15:[function(require,module,exports){
+},{"buffer":102}],18:[function(require,module,exports){
 (function (Buffer){
 function createUInt48BECodec(execlib, numchecker) {
   'use strict';
@@ -347,7 +419,7 @@ function createUInt48BECodec(execlib, numchecker) {
 module.exports = createUInt48BECodec;
 
 }).call(this,require("buffer").Buffer)
-},{"buffer":92}],16:[function(require,module,exports){
+},{"buffer":102}],19:[function(require,module,exports){
 (function (Buffer){
 function createUInt48LECodec(execlib, numchecker) {
   'use strict';
@@ -370,7 +442,7 @@ function createUInt48LECodec(execlib, numchecker) {
 module.exports = createUInt48LECodec;
 
 }).call(this,require("buffer").Buffer)
-},{"buffer":92}],17:[function(require,module,exports){
+},{"buffer":102}],20:[function(require,module,exports){
 (function (Buffer){
 function createUInt64BECodec(execlib) {
   return {
@@ -399,7 +471,7 @@ function createUInt64BECodec(execlib) {
 module.exports = createUInt64BECodec;
 
 }).call(this,require("buffer").Buffer)
-},{"buffer":92}],18:[function(require,module,exports){
+},{"buffer":102}],21:[function(require,module,exports){
 (function (Buffer){
 function createUInt64LECodec(execlib) {
   return {
@@ -428,7 +500,7 @@ function createUInt64LECodec(execlib) {
 module.exports = createUInt64LECodec;
 
 }).call(this,require("buffer").Buffer)
-},{"buffer":92}],19:[function(require,module,exports){
+},{"buffer":102}],22:[function(require,module,exports){
 (function (Buffer){
 function createVerbatimDecoder(execlib) {
   'use strict';
@@ -448,7 +520,7 @@ function createVerbatimDecoder(execlib) {
 module.exports = createVerbatimDecoder;
 
 }).call(this,{"isBuffer":require("../../../node_modules/allex-toolbox-dev/node_modules/is-buffer/index.js")})
-},{"../../../node_modules/allex-toolbox-dev/node_modules/is-buffer/index.js":97}],20:[function(require,module,exports){
+},{"../../../node_modules/allex-toolbox-dev/node_modules/is-buffer/index.js":107}],23:[function(require,module,exports){
 function createDBArray(execlib, leveldblib) {
   'use strict';
   var lib = execlib.lib,
@@ -698,14 +770,14 @@ function createDBArray(execlib, leveldblib) {
 
 module.exports = createDBArray;
 
-},{}],21:[function(require,module,exports){
+},{}],24:[function(require,module,exports){
 (function (process){
 var levelup = require('level-browserify'),
   Path = require('path'),
   fs = require('fs'),
   mkdirp = require('mkdirp');
 
-function createDBHandler (execlib, datafilterslib, encodingMakeup) {
+function createDBHandler (execlib, datafilterslib, encodingMakeup, Query) {
   'use strict';
   var lib = execlib.lib,
     q = lib.q,
@@ -806,6 +878,7 @@ function createDBHandler (execlib, datafilterslib, encodingMakeup) {
     this.get = null;
     this.del = null;
     this.opEvent = prophash.listenable ? new lib.HookCollection() : null;
+    this.queries = prophash.listenable ? new lib.Map() : null;
     this.setDB(new FakeDB());
     if (prophash.initiallyemptydb) {
       //console.log(prophash.dbname, 'initiallyemptydb!');
@@ -815,6 +888,11 @@ function createDBHandler (execlib, datafilterslib, encodingMakeup) {
     }
   }
   LevelDBHandler.prototype.destroy = function () {
+    if (this.queries) {
+      lib.containerDestroyAll(this.queries);
+      this.queries.destroy();
+    }
+    this.queries = null;
     if (this.opEvent) {
       this.opEvent.destroy();
     }
@@ -1119,33 +1197,31 @@ function createDBHandler (execlib, datafilterslib, encodingMakeup) {
       d = (options ? options.defer : null) || q.defer(),
       destroyables = [stream],
       _lisa = lib.isArray,
-      _lada = lib.arryDestroyAll;
-    switch (typeof (options ? options.filter : void 0)) {
-      case 'function':
-        stream.on('data', functionFilterStreamTraverser.bind(null, options.filter, stream, cb));
-        break;
-      case 'object':
-        try {
-          destroyables.push(
-            datafilterer(
-              datafilterslib.createFromDescriptor(options.filter),
-              datafilterslib.createFromDescriptor(options.keyfilter)
-            )
-          );
-          stream.on('data', functionFilterStreamTraverser.bind(
-            null, 
-            destroyables[1],
-            stream,
-            cb));
-        } catch (e) {
-          console.error(e.stack);
-          console.error(e);
-          stream.on('data', streamTraverser.bind(null, stream, cb));
-        }
-        break;
-      default:
+      _lada = lib.arryDestroyAll,
+      filtertype = typeof (options ? options.filter : void 0),
+      keyfiltertype = typeof (options ? options.keyfilter : void 0);
+    if (filtertype === 'function') {
+      stream.on('data', functionFilterStreamTraverser.bind(null, options.filter, stream, cb));
+    } else if (filtertype === 'object' || keyfiltertype === 'object') {
+      try {
+        destroyables.push(
+          datafilterer(
+            datafilterslib.createFromDescriptor(options.filter),
+            datafilterslib.createFromDescriptor(options.keyfilter)
+          )
+        );
+        stream.on('data', functionFilterStreamTraverser.bind(
+          null, 
+          destroyables[1],
+          stream,
+          cb));
+      } catch (e) {
+        console.error(e.stack);
+        console.error(e);
         stream.on('data', streamTraverser.bind(null, stream, cb));
-        break;
+      }
+    } else {
+      stream.on('data', streamTraverser.bind(null, stream, cb));
     }
     //stream.on('end', streamEnder.bind(null, d, stream, destroyables));
     stream.on('end', function streamEnder() {
@@ -1185,6 +1261,18 @@ function createDBHandler (execlib, datafilterslib, encodingMakeup) {
     return this.db.createReadStream(options);
   };
   // end of reading/traversing section//
+
+  LevelDBHandler.prototype.query = function (filterdesc, defer, starteddefer) {
+    var id = filterdesc ? JSON.stringify(filterdesc) : '',
+      _q = this.queries.get(id),
+      ret = starteddefer ? starteddefer.promise : q(true);
+    if (!_q) {
+      _q = new Query(id, this, filterdesc);
+      this.queries.add(id, _q);
+    }
+    _q.add(defer, starteddefer);
+    return ret;
+  };
   
   // helpers //
   function dumper(dumperobj, keyvalobj) {
@@ -1204,7 +1292,7 @@ function createDBHandler (execlib, datafilterslib, encodingMakeup) {
 module.exports = createDBHandler;
 
 }).call(this,require('_process'))
-},{"./dirdeleter":22,"_process":101,"fs":90,"level-browserify":46,"mkdirp":61,"path":99}],22:[function(require,module,exports){
+},{"./dirdeleter":25,"_process":111,"fs":100,"level-browserify":52,"mkdirp":67,"path":109}],25:[function(require,module,exports){
 var fs = require('fs'),
   Path = require('path');
 
@@ -1268,12 +1356,17 @@ function createDirDeleter(execlib) {
     if (stats.isDirectory()) {
       (new DirDeleter(fsitempath, defer)).go();
     } else {
-      fs.unlink(fsitempath, this.onUnlinked.bind(this, defer));
+      this.unlink(fsitempath, defer);
     }
   };
-  DirDeleter.prototype.onUnlinked = function (defer, err) {
+  DirDeleter.prototype.unlink = function (fsitempath, defer) {
+    fs.unlink(fsitempath, this.onUnlinked.bind(this, fsitempath, defer));
+  };
+  DirDeleter.prototype.onUnlinked = function (fsitempath, defer, err) {
     if (err) {
-      defer.reject(err);
+      //defer.reject(err);
+      console.error('err', err, 'will retry');
+      lib.runNext(this.unlink.bind(this, fsitempath, defer), 100);
     } else {
       defer.resolve(true);
     }
@@ -1295,7 +1388,7 @@ function createDirDeleter(execlib) {
 
 module.exports = createDirDeleter;
 
-},{"fs":90,"path":99}],23:[function(require,module,exports){
+},{"fs":100,"path":109}],26:[function(require,module,exports){
 function createEncodingMakeup (execlib, leveldblib, bufferlib) {
   'use strict';
 
@@ -1348,22 +1441,30 @@ function createEncodingMakeup (execlib, leveldblib, bufferlib) {
 
 module.exports = createEncodingMakeup;
 
-},{}],24:[function(require,module,exports){
-function createHookableUserSessionMixin (execlib) {
+},{}],27:[function(require,module,exports){
+function createHook (execlib, datafilterslib) {
   'use strict';
-
   var lib = execlib.lib,
-    q = lib.q;
+    q = lib.q,
+    KeysHandler = require('./keyshandlercreator')(execlib, datafilterslib);
 
-  function HookableUserSessionMixin (leveldb) {
-    this.leveldb = leveldb;
+
+  function Hook (prophash) {
+    if (!prophash.leveldb) {
+      throw new lib.Error('NO_LEVELDB_TO_HOOK_ON', 'Property hash has to have a leveldb property');
+    }
+    if (!prophash.leveldb.opEvent) {
+      console.error('leveldb is not listenable, will never get anything from it', prophash.leveldb);
+    }
+    this.leveldb = prophash.leveldb;
     this.isAllPass = false;
-    this.dbkeys = [];
+    this.keys = new KeysHandler();
     this.dbOpListener = null;
+    this.cb = prophash.cb;
   }
 
-  HookableUserSessionMixin.addMethods = function (UserSession) {
-    lib.inheritMethods (UserSession, HookableUserSessionMixin,
+  Hook.addMethods = function (klass) {
+    lib.inheritMethods (klass, Hook,
       'hook',
       'onScan',
       'postScan',
@@ -1372,14 +1473,17 @@ function createHookableUserSessionMixin (execlib) {
       'stopListening',
       'onLevelDBDataChanged',
       'pickFromLevelDBAndReport',
-      'isKeyValHashOk'
+      'pickFromLevelDBAndReportForArrayDBKeys',
+      'isKeyValHashOk',
+      'isKeyOk',
+      'unhook'
     );
   };
 
-  HookableUserSessionMixin.ALL_KEYS = '***';
+  Hook.ALL_KEYS = KeysHandler.ALL_KEYS;
 
-  HookableUserSessionMixin.prototype.destroy = function () {
-    this.dbkeys = null;
+  Hook.prototype.destroy = function () {
+    this.cb = null;
     if (this.dbOpListener) {
       this.dbOpListener.destroy();
     }
@@ -1388,54 +1492,53 @@ function createHookableUserSessionMixin (execlib) {
     this.leveldb = null;
   };
 
-  HookableUserSessionMixin.prototype.hook = function (hookobj, defer) {
+  Hook.prototype.hook = function (hookobj, defer) {
     var doscan = hookobj.scan,
-      dbkeys = hookobj.accounts || hookobj.keys,
+      dbkeys = hookobj.accounts || hookobj.keys || hookobj.filter,
       checkforlistener = false,
-      d,
+      nkh,
       pser,
-      isallpass;
-    if (!lib.isArray(dbkeys)) {
+      ret;
+    defer = defer || q.defer();
+    ret = defer.promise;
+    nkh = this.keys.add(dbkeys);
+    if (!nkh) {
       defer.resolve(true);
-    } else {
-      isallpass = dbkeys.indexOf(HookableUserSessionMixin.ALL_KEYS) >= 0;
-      lib.arryOperations.appendNonExistingItems(this.dbkeys, dbkeys);
     }
-    if (isallpass) {
-      this.isAllPass = true;
-    }
-    checkforlistener = this.dbkeys.length>0;
-    if (checkforlistener) {
-      if (doscan) {
-        pser = this.postScan.bind(this, defer, checkforlistener);
-        if (isallpass) {
-          this.leveldb.traverse(this.onScan.bind(this), {}).then(
-            pser,
-            pser
-          );
-        } else {
-         this.pickFromLevelDBAndReport(dbkeys).then(
+    if (nkh && doscan) { //with this `if`, if no new keys are found, no rescanning will be done. Problem?
+      pser = this.postScan.bind(this, defer);
+      if (nkh.isAllPass) {
+        this.leveldb.traverse(this.onScan.bind(this), {}).then(
           pser,
           pser
-         ) 
-        }
+        );
       } else {
-        this.postScan(defer, checkforlistener);
+       this.pickFromLevelDBAndReport(nkh, dbkeys).then(
+        pser,
+        pser
+       ) 
       }
+    } else {
+      this.postScan(defer);
     }
     defer = null;
+    return ret;
   };
 
-  HookableUserSessionMixin.prototype.pickFromLevelDBAndReport = function (dbkeys, defer) {
-    var dbkey = dbkeys.shift(),
+  Hook.prototype.pickFromLevelDBAndReport = function (nkhorfilters, dbkeys) {
+    if (lib.isArray(dbkeys)) {
+      return this.pickFromLevelDBAndReportForArrayDBKeys(dbkeys);
+    }
+    return this.leveldb.traverse(this.onScan.bind(this), nkhorfilters);
+  };
+  Hook.prototype.pickFromLevelDBAndReportForArrayDBKeys = function (dbkeys, defer) {
+    var dbkl = dbkeys.length,
+      dbkey = dbkeys.shift(),
       pflar,
       oldc = this.onLevelDBDataChanged.bind(this);
     defer = defer || q.defer();
-    if (!dbkey) {
-      return defer.promise;
-    }
-    if (dbkeys.length>0) {
-      pflar = this.pickFromLevelDBAndReport.bind(this, dbkeys, defer);
+    if (dbkl>0) {
+      pflar = this.pickFromLevelDBAndReportForArrayDBKeys.bind(this, dbkeys, defer);
     } else {
       pflar = defer.resolve.bind(defer, true);
     }
@@ -1458,45 +1561,37 @@ function createHookableUserSessionMixin (execlib) {
     return defer.promise;
   };
 
-  HookableUserSessionMixin.prototype.onScan = function (keyvalhash) {
-    if (this.isKeyValHashOk(keyvalhash)) {
+  Hook.prototype.onScan = function (keyvalhash) {
+    //if (this.isKeyValHashOk(keyvalhash)) {
       this.onLevelDBDataChanged(keyvalhash.key, keyvalhash.value);
-    }
+    //}
   };
 
-  HookableUserSessionMixin.prototype.postScan = function (defer, checkforlistener) {
-    if (checkforlistener) {
-      if ( !this.dbOpListener && this.leveldb && this.leveldb.opEvent ) {
-        this.dbOpListener = this.leveldb.opEvent.attach(this.onLevelDBDataChanged.bind(this));
-      }
-    } else {
+  Hook.prototype.postScan = function (defer) {
+    if (this.keys.isEmpty()) {
+      console.log('keys', this.keys, 'isEmpty');
       this.stopListening();
+    } else {
+      if ( !this.dbOpListener && this.leveldb) {
+        if ( this.leveldb.opEvent ) {
+          this.dbOpListener = this.leveldb.opEvent.attach(this.onLevelDBDataChanged.bind(this));
+        } else {
+          console.warn('LevelDB instance is not waitable!');
+        }
+      }
     }
     defer.resolve(true);
     defer = null;
   };
 
-  HookableUserSessionMixin.prototype._unhook = function (keyname){
-    var ind, isallkeys = keyname === HookableUserSessionMixin.ALL_KEYS;
-    if (!this.dbkeys) {
-      return;
-    }
-    if (isallkeys) {
-      this.isAllPass = false;
-    }
-    if (this.dbkeys === true) {
-      if (isallkeys) {
-        this.stopListening();
-      }
-      return;
-    }
-    ind = this.dbkeys.indexOf(keyname);
-    if (ind >= 0) {
-      this.dbkeys.splice(ind, 1);
-    }
+  Hook.prototype._unhook = function (key){
+    this.keys.remove(key);
   };
 
-  HookableUserSessionMixin.prototype.unhook = function (dbkeys, defer) {
+  Hook.prototype.unhook = function (dbkeys, defer) {
+    var ret;
+    defer = defer || q.defer();
+    ret = defer.promise;
     if (!lib.isArray(dbkeys)) {
       this.stopListening();
       defer.resolve(true);
@@ -1504,14 +1599,15 @@ function createHookableUserSessionMixin (execlib) {
       return;
     }
     dbkeys.forEach (this._unhook.bind(this));
-    if (!this.dbkeys) {
+    if (this.keys.isEmpty()) {
       this.stopListening();
     }
     defer.resolve(true);
     defer = null;
+    return ret;
   };
 
-  HookableUserSessionMixin.prototype.stopListening = function () {
+  Hook.prototype.stopListening = function () {
     if (this.dbOpListener) {
       this.dbOpListener.destroy();
     }
@@ -1519,42 +1615,368 @@ function createHookableUserSessionMixin (execlib) {
     this.dbkeys = null;
   };
 
-  HookableUserSessionMixin.prototype.onLevelDBDataChanged = function (key, value) {
-    this.sendOOB('l',[key, value]);
+  Hook.prototype.onLevelDBDataChanged = function (key, value) {
+    if (this.cb && this.isKeyValHashOk({key:key, value:value})) {
+      this.cb(key, value);
+    }
   };
 
-  HookableUserSessionMixin.prototype.isKeyValHashOk = function (keyvalhash) {
+  Hook.prototype.isKeyValHashOk = function (keyvalhash) {
     if (this.isAllPass) {
       return true;
     }
-    return this.dbkeys.indexOf(keyvalhash.key) >= 0
+    return this.keys.isKeyValHashOk(keyvalhash);
+  };
+
+  Hook.prototype.isKeyOk = function (key) {
+    return this.keys.isOk(key);
+  };
+
+  return Hook;
+}
+
+module.exports = createHook;
+
+},{"./keyshandlercreator":29}],28:[function(require,module,exports){
+function extendLibWithHooks (execlib, leveldblib, datafilterslib) {
+  'use strict';
+
+  var Hook = require('./creator')(execlib, datafilterslib),
+    HookableUserSessionMixin = require('./sessionmixincreator')(execlib, Hook);
+
+  leveldblib.Hook = Hook;
+  leveldblib.HookableUserSessionMixin = HookableUserSessionMixin;
+}
+
+module.exports = extendLibWithHooks;
+
+},{"./creator":27,"./sessionmixincreator":30}],29:[function(require,module,exports){
+function createKeyHandler (execlib, datafilterslib) {
+  'use strict';
+
+  var lib = execlib.lib,
+    ALL_KEYS = '***';
+
+  function isAFilterKey (key) {
+    if ('object' === typeof key && (key.hasOwnProperty('values')  || key.hasOwnProperty('keys'))) {
+      return true;
+    }
+    return false;
+  }
+
+  function AllPassKey () {
+  }
+  AllPassKey.prototype.destroy = lib.dummyFunc;
+  AllPassKey.prototype.isOk = function (key) {
+    return true;
+  };
+  AllPassKey.prototype.isKeyValHashOk = function (keyvalhash) {
+    return true;
+  };
+  AllPassKey.prototype.isAllPass = function () {
+    return true;
+  };
+  AllPassKey.prototype.hasKey = function (key) {
+    return key === ALL_KEYS;
+  }
+
+  function FilterKeyHandler (key) {
+    this.keyfilter = null;
+    this.valfilter = null;
+    if (key.keys) {
+      this.keyfilter = datafilterslib.createFromDescriptor(key.keys);
+    }
+    if (key.values) {
+      this.valfilter = datafilterslib.createFromDescriptor(key.values);
+    }
+  }
+  FilterKeyHandler.prototype.destroy = function () {
+    this.keyfilter = null;
+    this.valfilter = null;
+  };
+  FilterKeyHandler.prototype.isOk = function (key) {
+    if (this.keyfilter) {
+      return this.keyfilter.isOK(key);
+    }
+    return true;
+  };
+  FilterKeyHandler.prototype.isKeyValHashOk = function (keyvalhash) {
+    if (!this.isOk(keyvalhash.key)) {
+      //console.log('key', keyvalhash.key, 'is not ok with keyfilter');
+      return false;
+    }
+    return this.isValOk(keyvalhash.value);
+  };
+  FilterKeyHandler.prototype.isValOk = function (value) {
+    if (this.valfilter) {
+      //console.log('value', value, 'ok with valfilter', this.valfilter, '?', this.valfilter.isOK(value));
+      return this.valfilter.isOK(value);
+    }
+    return true;
+  };
+  FilterKeyHandler.prototype.hasKey = function (key) {
+    return false; //TODO
+  };
+
+  function SimpleKeyHandler (key) {
+    this.key = key;
+  }
+  SimpleKeyHandler.prototype.destroy = function () {
+    this.key = null;
+  };
+  SimpleKeyHandler.prototype.isOk = function (key) {
+    return key === this.key;
+  };
+  SimpleKeyHandler.prototype.isKeyValHashOk = function (keyvalhash) {
+    //console.log('SimpleKeyHandler isOk?', keyvalhash.key);
+    return this.isOk(keyvalhash.key);
+  };
+  SimpleKeyHandler.prototype.isAllPass = function () {
+    return false;
+  };
+  SimpleKeyHandler.prototype.hasKey = function (key) {
+    return key === this.key;
+  };
+
+  function ComplexKeyHandler (key) {
+    this.keys = key.map(keyHandlerFactory);
+  }
+  ComplexKeyHandler.prototype.destroy = function () {
+    var ks = this.keys;
+    this.keys = null;
+    if (ks) {
+      lib.arryDestroyAll(ks);
+    }
+  };
+  function isAllPassHandler (handler) {
+    return handler.isAllPass();
+  }
+  ComplexKeyHandler.prototype.isAllPass = function () {
+    return this.keys && this.keys.every(isAllPassHandler);
+  };
+  function keyEquals(keyarr, kh, khindex) {
+    return kh.hasKey(keyarr[khindex]);
+  }
+  ComplexKeyHandler.prototype.hasKey = function (key) {
+    if (!lib.isArray(key)) {
+      return false;
+    }
+    return this.keys.every(keyEquals.bind(null, key));
+  };
+  function isOkOnSubHandler (key, handler, handlerindex) {
+    return handler.isOk(key[handlerindex]);
+  }
+  ComplexKeyHandler.prototype.isOk = function (key) {
+    return this.keys && this.keys.every(isOkOnSubHandler.bind(null, key));
+  };
+  function isKeyValHashOkOnSubHandler (keyvalhash, handler, handlerindex) {
+    return handler.isOk(keyvalhash.key[handlerindex]);
+  }
+  ComplexKeyHandler.prototype.isKeyValHashOk = function (keyvalhash) {
+    return this.keys && this.keys.every(isKeyValHashOkOnSubHandler.bind(null, keyvalhash));
+  };
+
+  function keyHandlerFactory (key) {
+    if (key === ALL_KEYS) {
+      return new AllPassKey();
+    }
+    if (lib.isString(key)) {
+      return new SimpleKeyHandler(key);
+    }
+    if (lib.isArray(key)) {
+      return new ComplexKeyHandler(key);
+    }
+    if (isAFilterKey(key)) {
+      return new FilterKeyHandler(key);
+    }
+  }
+
+  function KeysHandler () {
+    this.handlers = [];
+    this.isAllPass = false;
+  }
+  KeysHandler.prototype.destroy = function () {
+    var hs;
+    this.isAllPass = null;
+    hs = this.handlers;
+    this.handlers = null;
+    if (hs) {
+      lib.arryDestroyAll(hs);
+    }
+  };
+  KeysHandler.prototype.isEmpty = function () {
+    return (!(this.handlers && this.handlers.length > 0));
+  };
+  KeysHandler.prototype.setHandlers = function (handlers) {
+    this.handlers = handlers;
+    this.isAllPass = handlers.some(isAllPassHandler);
+  };
+  function handlerHasKey (key, handler) {
+    return handler.hasKey(key);
+  }
+  KeysHandler.prototype.possiblyNewKey = function (res, key) {
+    var kh;
+    if (this.handlers.some(handlerHasKey.bind(null, key))) {
+      //console.log('already handling key', key);
+      return res;
+    }
+    kh = keyHandlerFactory(key);
+    res.push(kh);
+    return res;
+  }
+  KeysHandler.prototype.add = function (keys) {
+    var newkeys, nkh;
+    if (isAFilterKey(keys)) {
+      this.handlers.push(new FilterKeyHandler(keys));
+      return {
+        filter: keys.values,
+        keyfilter: keys.keys
+      };
+    }
+    if (!lib.isArray(keys)) {
+      return null;
+    }
+    newkeys = keys.reduce(this.possiblyNewKey.bind(this), []);
+    if (newkeys.length) {
+      Array.prototype.push.apply(this.handlers, newkeys);
+      nkh = new KeysHandler();
+      nkh.setHandlers(newkeys);
+      this.isAllPass |= nkh.isAllPass;
+      return nkh;
+    }
+    return null;
+  };
+  function indexAndElementFinder (findobj, handler, handlerindex) {
+    if (handler.hasKey(findobj.key)) {
+      findobj.handler = handler;
+      findobj.index = handlerindex;
+      return true;
+    }
+  }
+  KeysHandler.prototype.remove = function (key) {
+    var findobj = {key: key, handler: null, index: null},
+      found = this.handlers.some(indexAndElementFinder.bind(null, findobj));
+    if (found) {
+      this.handlers.splice(findobj.index, 1);
+    }
+    return found;
+  };
+  function isOkOnHandler (key, handler) {
+    //console.log(key, 'isOk', handler.isOk(key), 'on', handler);
+    return handler.isOk(key);
+  }
+  KeysHandler.prototype.isOk = function (key) {
+    return this.handlers && this.handlers.some(isOkOnHandler.bind(null, key));
+  };
+  function isKeyValHashOkOnHandler (keyvalhash, handler) {
+    //console.log(key, 'isOk', handler.isKeyValHashOk(key), 'on', handler);
+    return handler.isKeyValHashOk(keyvalhash);
+  }
+  KeysHandler.prototype.isKeyValHashOk = function (keyvalhash) {
+    return this.handlers && this.handlers.some(isKeyValHashOkOnHandler.bind(null, keyvalhash));
+  };
+
+  KeysHandler.ALL_KEYS = ALL_KEYS;
+
+  return KeysHandler;
+}
+
+module.exports = createKeyHandler;
+
+},{}],30:[function(require,module,exports){
+function createHookableUserSessionMixin (execlib, Hook) {
+  'use strict';
+
+  var lib = execlib.lib,
+    q = lib.q;
+
+  function HookableUserSessionMixin (leveldb) {
+    Hook.call(this, {leveldb:leveldb, cb: this.onDataFromHook.bind(this)});
+  }
+
+  lib.inherit(HookableUserSessionMixin, Hook);
+
+  HookableUserSessionMixin.addMethods = function (UserSession) {
+    Hook.addMethods(UserSession);
+    lib.inheritMethods(UserSession, HookableUserSessionMixin, 'onDataFromHook');
+  };
+
+  HookableUserSessionMixin.ALL_KEYS = Hook.ALL_KEYS;
+
+  HookableUserSessionMixin.prototype.onDataFromHook = function (key, value) {
+    this.sendOOB('l',[key, value]);
   };
 
   HookableUserSessionMixin.__methodDescriptors = {
     unhook: [{
       title: 'Unhook',
       type: 'array',
-      items: {
-        'type': 'string'
+      items : {
+        oneOf : [
+          {type : 'string'},
+          {type : 'array', items: {type: 'string'}}
+        ]
       },
       required: false
     }],
     hook : [{
       title: 'Hook',
       type: 'object',
-      properties : {
-        scan : {
-          type : 'boolean',
+      anyOf : [
+         { '$ref' : '#/definitions/propswithaccounts'},
+         { '$ref' : '#/definitions/propswithkeys'},
+         { '$ref' : '#/definitions/propswithfilter'}
+      ],
+      definitions: {
+        propswithaccounts : {
+          properties: {
+            scan : {
+              type : 'boolean',
+            },
+            accounts: {
+              type : 'array',
+              items : {
+                type : 'string'
+              }
+            }
+          },
+          required: ['accounts'],
+          additionalProperties : false
         },
-        accounts : {
-          type : 'array',
-          items : {
-            type : 'string'
+        propswithkeys : {
+          properties: {
+            scan : {
+              type : 'boolean',
+            },
+            keys: {
+              type : 'array',
+              items : {
+                oneOf : [
+                  {type : 'string'},
+                  {type : 'array', items: {type: 'string'}}
+                ]
+              }
+            }
+          },
+          required: ['keys'],
+          additionalProperties : false
+        },
+        propswithfilter: {
+          properties: {
+            scan: {
+              type: 'boolean'
+            },
+            filter: {
+              type: 'object',
+              properties: {
+                values: {
+                  type: 'object'
+                }
+              }
+            }
           }
         }
-      },
-      required: ['accounts'],
-      additionalProperties : false
+      }
     }]
   };
 
@@ -1565,7 +1987,7 @@ function createHookableUserSessionMixin (execlib) {
 module.exports = createHookableUserSessionMixin;
 
 
-},{}],25:[function(require,module,exports){
+},{}],31:[function(require,module,exports){
 (function (Buffer){
 function realCreator(execlib, datafilterslib, bufferlib) {
   'use strict';
@@ -1573,6 +1995,7 @@ function realCreator(execlib, datafilterslib, bufferlib) {
     q = lib.q,
     qlib = lib.qlib,
     encodingMakeup,
+    querylib,
     LevelDBHandler;
 
   var _nullcodec = {
@@ -1608,11 +2031,16 @@ function realCreator(execlib, datafilterslib, bufferlib) {
     UInt64BECodec: require('./codecs/uint64becodeccreator')(execlib, numchecker),
     UInt64LECodec: require('./codecs/uint64lecodeccreator')(execlib, numchecker),
     Int64BECodec: require('./codecs/int64becodeccreator')(execlib, numchecker),
-    Int64LECodec: require('./codecs/int64lecodeccreator')(execlib, numchecker)
+    Int64LECodec: require('./codecs/int64lecodeccreator')(execlib, numchecker),
+    Int64LegacyCodec: require('./codecs/int64codeccreator')(execlib),
+    DoubleBECodec: require('./codecs/doublebecodeccreator')(execlib),
+    DoubleLECodec: require('./codecs/doublelecodeccreator')(execlib)
   };
 
   encodingMakeup = require('./encodingmakeupcreator')(execlib, ret, bufferlib);
-  LevelDBHandler = require('./dbhandlercreator')(execlib, datafilterslib, encodingMakeup);
+  querylib = require('./query')(execlib, datafilterslib);
+  //Query = require('./querycreator')(execlib, datafilterslib);
+  LevelDBHandler = require('./dbhandlercreator')(execlib, datafilterslib, encodingMakeup, querylib.Query);
   function creator(hash) {
     return new LevelDBHandler(hash);
   }
@@ -1628,7 +2056,8 @@ function realCreator(execlib, datafilterslib, bufferlib) {
   ret.FiniteLengthInsertJob = require('./transactions/finitelengthinsertjobcreator')(execlib, ret.KnownLengthInsertJob);
   ret.ChainedOperationsJob = require('./transactions/chainedoperationsjobcreator')(execlib, qlib.JobBase);
   ret.ServiceUserMixin = require('./serviceusermixincreator')(execlib, datafilterslib);
-  ret.HookableUserSessionMixin = require('./hookableusersessionmixincreator')(execlib);
+  require('./hook')(execlib, ret, datafilterslib);
+  ret.QuerableUserSessionMixin = querylib.SessionMixin;
   ret.streamInSink = require('./streaminsinkcreator')(execlib);
   ret.enhanceSink = function(sinkklass) {
     sinkklass.prototype.ClientUser.prototype.__methodDescriptors.resumeLevelDBStream = require('./resumeleveldbstreamdescriptor');
@@ -1639,7 +2068,7 @@ function realCreator(execlib, datafilterslib, bufferlib) {
 module.exports = realCreator;
 
 }).call(this,require("buffer").Buffer)
-},{"./codecs/bytecodeccreator":2,"./codecs/int16becodeccreator":3,"./codecs/int16lecodeccreator":4,"./codecs/int32becodeccreator":5,"./codecs/int32lecodeccreator":6,"./codecs/int48becodeccreator":7,"./codecs/int48lecodeccreator":8,"./codecs/int64becodeccreator":9,"./codecs/int64lecodeccreator":10,"./codecs/uint16becodeccreator":11,"./codecs/uint16lecodeccreator":12,"./codecs/uint32becodeccreator":13,"./codecs/uint32lecodeccreator":14,"./codecs/uint48becodeccreator":15,"./codecs/uint48lecodeccreator":16,"./codecs/uint64becodeccreator":17,"./codecs/uint64lecodeccreator":18,"./codecs/verbatimdecodercreator":19,"./dbarrayhandlercreator":20,"./dbhandlercreator":21,"./encodingmakeupcreator":23,"./hookableusersessionmixincreator":24,"./numcheckercreator":78,"./queueablehandlercreator":79,"./queueablemixincreator":80,"./resumeleveldbstreamdescriptor":81,"./serviceusermixincreator":82,"./shift2pushercreator":83,"./streaminsinkcreator":84,"./transactions/chainedoperationsjobcreator":85,"./transactions/finitelengthinsertjobcreator":86,"./transactions/knownlengthinsertjobcreator":87,"buffer":92}],26:[function(require,module,exports){
+},{"./codecs/bytecodeccreator":2,"./codecs/doublebecodeccreator":3,"./codecs/doublelecodeccreator":4,"./codecs/int16becodeccreator":5,"./codecs/int16lecodeccreator":6,"./codecs/int32becodeccreator":7,"./codecs/int32lecodeccreator":8,"./codecs/int48becodeccreator":9,"./codecs/int48lecodeccreator":10,"./codecs/int64becodeccreator":11,"./codecs/int64codeccreator":12,"./codecs/int64lecodeccreator":13,"./codecs/uint16becodeccreator":14,"./codecs/uint16lecodeccreator":15,"./codecs/uint32becodeccreator":16,"./codecs/uint32lecodeccreator":17,"./codecs/uint48becodeccreator":18,"./codecs/uint48lecodeccreator":19,"./codecs/uint64becodeccreator":20,"./codecs/uint64lecodeccreator":21,"./codecs/verbatimdecodercreator":22,"./dbarrayhandlercreator":23,"./dbhandlercreator":24,"./encodingmakeupcreator":26,"./hook":28,"./numcheckercreator":84,"./query":86,"./queueablehandlercreator":89,"./queueablemixincreator":90,"./resumeleveldbstreamdescriptor":91,"./serviceusermixincreator":92,"./shift2pushercreator":93,"./streaminsinkcreator":94,"./transactions/chainedoperationsjobcreator":95,"./transactions/finitelengthinsertjobcreator":96,"./transactions/knownlengthinsertjobcreator":97,"buffer":102}],32:[function(require,module,exports){
 (function (process){
 /* Copyright (c) 2013 Rod Vagg, MIT License */
 
@@ -1723,7 +2152,7 @@ AbstractChainedBatch.prototype.write = function (options, callback) {
 
 module.exports = AbstractChainedBatch
 }).call(this,require('_process'))
-},{"_process":101}],27:[function(require,module,exports){
+},{"_process":111}],33:[function(require,module,exports){
 (function (process){
 /* Copyright (c) 2013 Rod Vagg, MIT License */
 
@@ -1776,7 +2205,7 @@ AbstractIterator.prototype.end = function (callback) {
 module.exports = AbstractIterator
 
 }).call(this,require('_process'))
-},{"_process":101}],28:[function(require,module,exports){
+},{"_process":111}],34:[function(require,module,exports){
 (function (Buffer,process){
 /* Copyright (c) 2013 Rod Vagg, MIT License */
 
@@ -2036,7 +2465,7 @@ module.exports.AbstractIterator     = AbstractIterator
 module.exports.AbstractChainedBatch = AbstractChainedBatch
 
 }).call(this,{"isBuffer":require("../../../../node_modules/allex-toolbox-dev/node_modules/is-buffer/index.js")},require('_process'))
-},{"../../../../node_modules/allex-toolbox-dev/node_modules/is-buffer/index.js":97,"./abstract-chained-batch":26,"./abstract-iterator":27,"_process":101,"xtend":29}],29:[function(require,module,exports){
+},{"../../../../node_modules/allex-toolbox-dev/node_modules/is-buffer/index.js":107,"./abstract-chained-batch":32,"./abstract-iterator":33,"_process":111,"xtend":35}],35:[function(require,module,exports){
 module.exports = extend
 
 function extend() {
@@ -2055,7 +2484,7 @@ function extend() {
     return target
 }
 
-},{}],30:[function(require,module,exports){
+},{}],36:[function(require,module,exports){
 (function (Buffer){
 // Copyright Joyent, Inc. and other Node contributors.
 //
@@ -2166,7 +2595,7 @@ function objectToString(o) {
 }
 
 }).call(this,{"isBuffer":require("../../../../../node_modules/allex-toolbox-dev/node_modules/is-buffer/index.js")})
-},{"../../../../../node_modules/allex-toolbox-dev/node_modules/is-buffer/index.js":97}],31:[function(require,module,exports){
+},{"../../../../../node_modules/allex-toolbox-dev/node_modules/is-buffer/index.js":107}],37:[function(require,module,exports){
 var util = require('util')
   , AbstractIterator = require('abstract-leveldown').AbstractIterator
 
@@ -2202,7 +2631,7 @@ DeferredIterator.prototype._operation = function (method, args) {
 
 module.exports = DeferredIterator;
 
-},{"abstract-leveldown":36,"util":118}],32:[function(require,module,exports){
+},{"abstract-leveldown":42,"util":128}],38:[function(require,module,exports){
 (function (Buffer,process){
 var util              = require('util')
   , AbstractLevelDOWN = require('abstract-leveldown').AbstractLevelDOWN
@@ -2262,7 +2691,7 @@ module.exports                  = DeferredLevelDOWN
 module.exports.DeferredIterator = DeferredIterator
 
 }).call(this,{"isBuffer":require("../../../../node_modules/allex-toolbox-dev/node_modules/is-buffer/index.js")},require('_process'))
-},{"../../../../node_modules/allex-toolbox-dev/node_modules/is-buffer/index.js":97,"./deferred-iterator":31,"_process":101,"abstract-leveldown":36,"util":118}],33:[function(require,module,exports){
+},{"../../../../node_modules/allex-toolbox-dev/node_modules/is-buffer/index.js":107,"./deferred-iterator":37,"_process":111,"abstract-leveldown":42,"util":128}],39:[function(require,module,exports){
 (function (process){
 /* Copyright (c) 2013 Rod Vagg, MIT License */
 
@@ -2345,9 +2774,9 @@ AbstractChainedBatch.prototype.write = function (options, callback) {
 
 module.exports = AbstractChainedBatch
 }).call(this,require('_process'))
-},{"_process":101}],34:[function(require,module,exports){
-arguments[4][27][0].apply(exports,arguments)
-},{"_process":101,"dup":27}],35:[function(require,module,exports){
+},{"_process":111}],40:[function(require,module,exports){
+arguments[4][33][0].apply(exports,arguments)
+},{"_process":111,"dup":33}],41:[function(require,module,exports){
 (function (Buffer,process){
 /* Copyright (c) 2013 Rod Vagg, MIT License */
 
@@ -2623,13 +3052,13 @@ AbstractLevelDOWN.prototype._checkKey = function (obj, type) {
 module.exports = AbstractLevelDOWN
 
 }).call(this,{"isBuffer":require("../../../../../../node_modules/allex-toolbox-dev/node_modules/is-buffer/index.js")},require('_process'))
-},{"../../../../../../node_modules/allex-toolbox-dev/node_modules/is-buffer/index.js":97,"./abstract-chained-batch":33,"./abstract-iterator":34,"_process":101,"xtend":38}],36:[function(require,module,exports){
+},{"../../../../../../node_modules/allex-toolbox-dev/node_modules/is-buffer/index.js":107,"./abstract-chained-batch":39,"./abstract-iterator":40,"_process":111,"xtend":44}],42:[function(require,module,exports){
 exports.AbstractLevelDOWN    = require('./abstract-leveldown')
 exports.AbstractIterator     = require('./abstract-iterator')
 exports.AbstractChainedBatch = require('./abstract-chained-batch')
 exports.isLevelDOWN          = require('./is-leveldown')
 
-},{"./abstract-chained-batch":33,"./abstract-iterator":34,"./abstract-leveldown":35,"./is-leveldown":37}],37:[function(require,module,exports){
+},{"./abstract-chained-batch":39,"./abstract-iterator":40,"./abstract-leveldown":41,"./is-leveldown":43}],43:[function(require,module,exports){
 var AbstractLevelDOWN = require('./abstract-leveldown')
 
 function isLevelDOWN (db) {
@@ -2645,7 +3074,7 @@ function isLevelDOWN (db) {
 
 module.exports = isLevelDOWN
 
-},{"./abstract-leveldown":35}],38:[function(require,module,exports){
+},{"./abstract-leveldown":41}],44:[function(require,module,exports){
 module.exports = extend
 
 var hasOwnProperty = Object.prototype.hasOwnProperty;
@@ -2666,7 +3095,7 @@ function extend() {
     return target
 }
 
-},{}],39:[function(require,module,exports){
+},{}],45:[function(require,module,exports){
 var prr = require('prr')
 
 function init (type, message, cause) {
@@ -2723,7 +3152,7 @@ module.exports = function (errno) {
   }
 }
 
-},{"prr":41}],40:[function(require,module,exports){
+},{"prr":47}],46:[function(require,module,exports){
 var all = module.exports.all = [
   {
     errno: -2,
@@ -3038,7 +3467,7 @@ all.forEach(function (error) {
 module.exports.custom = require('./custom')(module.exports)
 module.exports.create = module.exports.custom.createError
 
-},{"./custom":39}],41:[function(require,module,exports){
+},{"./custom":45}],47:[function(require,module,exports){
 /*!
   * prr
   * (c) 2013 Rod Vagg <rod@vagg.org>
@@ -3102,7 +3531,7 @@ module.exports.create = module.exports.custom.createError
 
   return prr
 })
-},{}],42:[function(require,module,exports){
+},{}],48:[function(require,module,exports){
 /*global window:false, self:false, define:false, module:false */
 
 /**
@@ -4509,7 +4938,7 @@ module.exports.create = module.exports.custom.createError
 
 }, this);
 
-},{}],43:[function(require,module,exports){
+},{}],49:[function(require,module,exports){
 if (typeof Object.create === 'function') {
   // implementation from standard node.js 'util' module
   module.exports = function inherits(ctor, superCtor) {
@@ -4534,12 +4963,12 @@ if (typeof Object.create === 'function') {
   }
 }
 
-},{}],44:[function(require,module,exports){
+},{}],50:[function(require,module,exports){
 module.exports = Array.isArray || function (arr) {
   return Object.prototype.toString.call(arr) == '[object Array]';
 };
 
-},{}],45:[function(require,module,exports){
+},{}],51:[function(require,module,exports){
 var Buffer = require('buffer').Buffer;
 
 module.exports = isBuffer;
@@ -4549,7 +4978,7 @@ function isBuffer (o) {
     || /\[object (.+Array|Array.+)\]/.test(Object.prototype.toString.call(o));
 }
 
-},{"buffer":92}],46:[function(require,module,exports){
+},{"buffer":102}],52:[function(require,module,exports){
 
 var Leveljs = require('level-js')
 
@@ -4557,7 +4986,7 @@ module.exports = require('level-packager')(function(l) {
   return new Leveljs(l)
 })
 
-},{"level-js":52,"level-packager":54}],47:[function(require,module,exports){
+},{"level-js":58,"level-packager":60}],53:[function(require,module,exports){
 var encodings = require('./lib/encodings');
 
 module.exports = Codec;
@@ -4665,7 +5094,7 @@ Codec.prototype.valueAsBuffer = function(opts){
 };
 
 
-},{"./lib/encodings":48}],48:[function(require,module,exports){
+},{"./lib/encodings":54}],54:[function(require,module,exports){
 (function (Buffer){
 
 exports.utf8 = exports['utf-8'] = {
@@ -4745,7 +5174,7 @@ function isBinary(data){
 
 
 }).call(this,require("buffer").Buffer)
-},{"buffer":92}],49:[function(require,module,exports){
+},{"buffer":102}],55:[function(require,module,exports){
 /* Copyright (c) 2012-2015 LevelUP contributors
  * See list at <https://github.com/rvagg/node-levelup#contributing>
  * MIT License
@@ -4769,7 +5198,7 @@ module.exports = {
   , EncodingError       : createError('EncodingError', LevelUPError)
 }
 
-},{"errno":40}],50:[function(require,module,exports){
+},{"errno":46}],56:[function(require,module,exports){
 var inherits = require('inherits');
 var Readable = require('readable-stream').Readable;
 var extend = require('xtend');
@@ -4827,9 +5256,9 @@ ReadStream.prototype._cleanup = function(){
 };
 
 
-},{"inherits":43,"level-errors":49,"readable-stream":73,"xtend":51}],51:[function(require,module,exports){
-arguments[4][38][0].apply(exports,arguments)
-},{"dup":38}],52:[function(require,module,exports){
+},{"inherits":49,"level-errors":55,"readable-stream":79,"xtend":57}],57:[function(require,module,exports){
+arguments[4][44][0].apply(exports,arguments)
+},{"dup":44}],58:[function(require,module,exports){
 (function (Buffer){
 module.exports = Level
 
@@ -5007,7 +5436,7 @@ var checkKeyValue = Level.prototype._checkKeyValue = function (obj, type) {
 }
 
 }).call(this,require("buffer").Buffer)
-},{"./iterator":53,"abstract-leveldown":28,"buffer":92,"idb-wrapper":42,"isbuffer":45,"typedarray-to-buffer":75,"util":118,"xtend":77}],53:[function(require,module,exports){
+},{"./iterator":59,"abstract-leveldown":34,"buffer":102,"idb-wrapper":48,"isbuffer":51,"typedarray-to-buffer":81,"util":128,"xtend":83}],59:[function(require,module,exports){
 var util = require('util')
 var AbstractIterator  = require('abstract-leveldown').AbstractIterator
 var ltgt = require('ltgt')
@@ -5081,7 +5510,7 @@ Iterator.prototype._next = function (callback) {
   this.callback = callback
 }
 
-},{"abstract-leveldown":28,"ltgt":60,"util":118}],54:[function(require,module,exports){
+},{"abstract-leveldown":34,"ltgt":66,"util":128}],60:[function(require,module,exports){
 const levelup = require('levelup')
 
 function packager (leveldown) {
@@ -5109,7 +5538,7 @@ function packager (leveldown) {
 
 module.exports = packager
 
-},{"levelup":56}],55:[function(require,module,exports){
+},{"levelup":62}],61:[function(require,module,exports){
 /* Copyright (c) 2012-2016 LevelUP contributors
  * See list at <https://github.com/level/levelup#contributing>
  * MIT License
@@ -5194,7 +5623,7 @@ Batch.prototype.write = function (callback) {
 
 module.exports = Batch
 
-},{"./util":57,"level-errors":49}],56:[function(require,module,exports){
+},{"./util":63,"level-errors":55}],62:[function(require,module,exports){
 (function (process){
 /* Copyright (c) 2012-2016 LevelUP contributors
  * See list at <https://github.com/level/levelup#contributing>
@@ -5597,7 +6026,7 @@ module.exports.repair  = deprecate(
 
 
 }).call(this,require('_process'))
-},{"./batch":55,"./util":57,"_process":101,"deferred-leveldown":32,"events":94,"level-codec":47,"level-errors":49,"level-iterator-stream":50,"prr":67,"util":118,"xtend":58}],57:[function(require,module,exports){
+},{"./batch":61,"./util":63,"_process":111,"deferred-leveldown":38,"events":104,"level-codec":53,"level-errors":55,"level-iterator-stream":56,"prr":73,"util":128,"xtend":64}],63:[function(require,module,exports){
 /* Copyright (c) 2012-2016 LevelUP contributors
  * See list at <https://github.com/level/levelup#contributing>
  * MIT License
@@ -5676,9 +6105,9 @@ module.exports = {
   , isDefined       : isDefined
 }
 
-},{"../package.json":59,"level-errors":49,"leveldown":89,"leveldown/package":89,"semver":89,"util":118,"xtend":58}],58:[function(require,module,exports){
-arguments[4][38][0].apply(exports,arguments)
-},{"dup":38}],59:[function(require,module,exports){
+},{"../package.json":65,"level-errors":55,"leveldown":99,"leveldown/package":99,"semver":99,"util":128,"xtend":64}],64:[function(require,module,exports){
+arguments[4][44][0].apply(exports,arguments)
+},{"dup":44}],65:[function(require,module,exports){
 module.exports={
   "_args": [
     [
@@ -5691,7 +6120,7 @@ module.exports={
         "spec": ">=1.3.0 <1.4.0",
         "type": "range"
       },
-      "/home/andra/lib/node_modules-dev/allex_leveldblib/node_modules/level-packager"
+      "/home/ubuntu/lib/allexjs_modules_dev/allex_leveldblib/node_modules/level-packager"
     ]
   ],
   "_from": "levelup@>=1.3.0 <1.4.0",
@@ -5725,7 +6154,7 @@ module.exports={
   "_shasum": "bf9db62bdb6188d08eaaa2efcf6cc311916f41fd",
   "_shrinkwrap": null,
   "_spec": "levelup@~1.3.0",
-  "_where": "/home/andra/lib/node_modules-dev/allex_leveldblib/node_modules/level-packager",
+  "_where": "/home/ubuntu/lib/allexjs_modules_dev/allex_leveldblib/node_modules/level-packager",
   "browser": {
     "leveldown": false,
     "leveldown/package": false,
@@ -5875,7 +6304,7 @@ module.exports={
   "version": "1.3.3"
 }
 
-},{}],60:[function(require,module,exports){
+},{}],66:[function(require,module,exports){
 (function (Buffer){
 
 exports.compare = function (a, b) {
@@ -6030,7 +6459,7 @@ exports.filter = function (range, compare) {
 
 
 }).call(this,{"isBuffer":require("../../../../node_modules/allex-toolbox-dev/node_modules/is-buffer/index.js")})
-},{"../../../../node_modules/allex-toolbox-dev/node_modules/is-buffer/index.js":97}],61:[function(require,module,exports){
+},{"../../../../node_modules/allex-toolbox-dev/node_modules/is-buffer/index.js":107}],67:[function(require,module,exports){
 (function (process){
 var path = require('path');
 var fs = require('fs');
@@ -6132,7 +6561,7 @@ mkdirP.sync = function sync (p, opts, made) {
 };
 
 }).call(this,require('_process'))
-},{"_process":101,"fs":90,"path":99}],62:[function(require,module,exports){
+},{"_process":111,"fs":100,"path":109}],68:[function(require,module,exports){
 (function (Buffer){
 //     Int64.js
 //
@@ -6404,7 +6833,7 @@ Int64.prototype = {
 };
 
 }).call(this,require("buffer").Buffer)
-},{"buffer":92}],63:[function(require,module,exports){
+},{"buffer":102}],69:[function(require,module,exports){
 var hasOwn = Object.prototype.hasOwnProperty;
 var toString = Object.prototype.toString;
 
@@ -6446,11 +6875,11 @@ module.exports = function forEach(obj, fn) {
 };
 
 
-},{}],64:[function(require,module,exports){
+},{}],70:[function(require,module,exports){
 module.exports = Object.keys || require('./shim');
 
 
-},{"./shim":66}],65:[function(require,module,exports){
+},{"./shim":72}],71:[function(require,module,exports){
 var toString = Object.prototype.toString;
 
 module.exports = function isArguments(value) {
@@ -6468,7 +6897,7 @@ module.exports = function isArguments(value) {
 };
 
 
-},{}],66:[function(require,module,exports){
+},{}],72:[function(require,module,exports){
 (function () {
 	"use strict";
 
@@ -6532,9 +6961,9 @@ module.exports = function isArguments(value) {
 }());
 
 
-},{"./foreach":63,"./isArguments":65}],67:[function(require,module,exports){
-arguments[4][41][0].apply(exports,arguments)
-},{"dup":41}],68:[function(require,module,exports){
+},{"./foreach":69,"./isArguments":71}],73:[function(require,module,exports){
+arguments[4][47][0].apply(exports,arguments)
+},{"dup":47}],74:[function(require,module,exports){
 (function (process){
 // Copyright Joyent, Inc. and other Node contributors.
 //
@@ -6627,7 +7056,7 @@ function forEach (xs, f) {
 }
 
 }).call(this,require('_process'))
-},{"./_stream_readable":70,"./_stream_writable":72,"_process":101,"core-util-is":30,"inherits":43}],69:[function(require,module,exports){
+},{"./_stream_readable":76,"./_stream_writable":78,"_process":111,"core-util-is":36,"inherits":49}],75:[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -6675,7 +7104,7 @@ PassThrough.prototype._transform = function(chunk, encoding, cb) {
   cb(null, chunk);
 };
 
-},{"./_stream_transform":71,"core-util-is":30,"inherits":43}],70:[function(require,module,exports){
+},{"./_stream_transform":77,"core-util-is":36,"inherits":49}],76:[function(require,module,exports){
 (function (process){
 // Copyright Joyent, Inc. and other Node contributors.
 //
@@ -7630,7 +8059,7 @@ function indexOf (xs, x) {
 }
 
 }).call(this,require('_process'))
-},{"./_stream_duplex":68,"_process":101,"buffer":92,"core-util-is":30,"events":94,"inherits":43,"isarray":44,"stream":113,"string_decoder/":74,"util":89}],71:[function(require,module,exports){
+},{"./_stream_duplex":74,"_process":111,"buffer":102,"core-util-is":36,"events":104,"inherits":49,"isarray":50,"stream":123,"string_decoder/":80,"util":99}],77:[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -7841,7 +8270,7 @@ function done(stream, er) {
   return stream.push(null);
 }
 
-},{"./_stream_duplex":68,"core-util-is":30,"inherits":43}],72:[function(require,module,exports){
+},{"./_stream_duplex":74,"core-util-is":36,"inherits":49}],78:[function(require,module,exports){
 (function (process){
 // Copyright Joyent, Inc. and other Node contributors.
 //
@@ -8322,7 +8751,7 @@ function endWritable(stream, state, cb) {
 }
 
 }).call(this,require('_process'))
-},{"./_stream_duplex":68,"_process":101,"buffer":92,"core-util-is":30,"inherits":43,"stream":113}],73:[function(require,module,exports){
+},{"./_stream_duplex":74,"_process":111,"buffer":102,"core-util-is":36,"inherits":49,"stream":123}],79:[function(require,module,exports){
 (function (process){
 exports = module.exports = require('./lib/_stream_readable.js');
 exports.Stream = require('stream');
@@ -8336,7 +8765,7 @@ if (!process.browser && process.env.READABLE_STREAM === 'disable') {
 }
 
 }).call(this,require('_process'))
-},{"./lib/_stream_duplex.js":68,"./lib/_stream_passthrough.js":69,"./lib/_stream_readable.js":70,"./lib/_stream_transform.js":71,"./lib/_stream_writable.js":72,"_process":101,"stream":113}],74:[function(require,module,exports){
+},{"./lib/_stream_duplex.js":74,"./lib/_stream_passthrough.js":75,"./lib/_stream_readable.js":76,"./lib/_stream_transform.js":77,"./lib/_stream_writable.js":78,"_process":111,"stream":123}],80:[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -8559,7 +8988,7 @@ function base64DetectIncompleteChar(buffer) {
   this.charLength = this.charReceived ? 3 : 0;
 }
 
-},{"buffer":92}],75:[function(require,module,exports){
+},{"buffer":102}],81:[function(require,module,exports){
 (function (Buffer){
 /**
  * Convert a typed array to a Buffer without a copy
@@ -8582,7 +9011,7 @@ module.exports = function (arr) {
 }
 
 }).call(this,require("buffer").Buffer)
-},{"buffer":92}],76:[function(require,module,exports){
+},{"buffer":102}],82:[function(require,module,exports){
 module.exports = hasKeys
 
 function hasKeys(source) {
@@ -8591,7 +9020,7 @@ function hasKeys(source) {
         typeof source === "function")
 }
 
-},{}],77:[function(require,module,exports){
+},{}],83:[function(require,module,exports){
 var Keys = require("object-keys")
 var hasKeys = require("./has-keys")
 
@@ -8618,7 +9047,7 @@ function extend() {
     return target
 }
 
-},{"./has-keys":76,"object-keys":64}],78:[function(require,module,exports){
+},{"./has-keys":82,"object-keys":70}],84:[function(require,module,exports){
 function createNumChecker(execlib) {
   'use strict';
   var lib = execlib.lib;
@@ -8643,7 +9072,348 @@ function createNumChecker(execlib) {
 
 module.exports = createNumChecker;
 
-},{}],79:[function(require,module,exports){
+},{}],85:[function(require,module,exports){
+function createQuery (execlib, datafilterslib) {
+  'use strict';
+  var lib = execlib.lib;
+
+  function Query (id, leveldb, filters) {
+    this.id = id;
+    this.leveldb = leveldb;
+    this.defers = new lib.Fifo();
+    this.traversers = new lib.Fifo();
+    this.keyfilter = null;
+    this.valfilter = null;
+    this.listener = null;
+    if (filters) {
+      this.keyfilter = datafilterslib.createFromDescriptor(filters.keys);
+      this.valfilter = datafilterslib.createFromDescriptor(filters.values);
+    } else {
+      this.keyfilter = datafilterslib.createFromDescriptor(null);
+      this.valfilter = datafilterslib.createFromDescriptor(null);
+    }
+    if (leveldb.opEvent) {
+      this.listener = leveldb.opEvent.attach(this.onLevelDBData.bind(this));
+    }
+  }
+  function resolver(defer) {
+    defer.resolve(true);
+  }
+  Query.prototype.destroy = function () {
+    var ds, ts;
+    if (this.listener) {
+      this.listener.destroy();
+    }
+    this.listener = null;
+    if (this.valfilter) {
+      this.valfilter.destroy();
+    }
+    this.valfilter = null;
+    if (this.keyfilter) {
+      this.keyfilter.destroy();
+    }
+    this.keyfilter = null;
+    ts = this.traversers;
+    this.traversers = null;
+    if (ts) {
+      lib.containerDestroyAll(ts);
+      ts.destroy();
+    }
+    ds = this.defers;
+    this.defers = null;
+    if (ds) {
+      ds.drain(resolver);
+      ds.destroy();
+    }
+    if (this.leveldb && this.id && this.leveldb.queries) {
+      this.leveldb.queries.remove(this.id);
+    }
+    this.leveldb = null;
+    this.id = null;
+  };
+  function traverser (defer, keyvalue) {
+    defer.notify([keyvalue.key, keyvalue.value]);
+  };
+  Query.prototype.add = function (defer, starteddefer) {
+    var traverseevents, traverseitem;
+    if (starteddefer) {
+      traverseevents = new lib.Fifo();
+      traverseitem = this.traversers.push(traverseevents);
+      this.leveldb.traverse(traverser.bind(null, defer), {
+        keyfilter: this.keyfilter.__descriptor, 
+        filter: this.valfilter.__descriptor
+      }).then(
+        this.onTraverseDone.bind(this, defer, traverseitem, starteddefer)
+      );
+    } else {
+      this.onTraverseDone(defer);
+    }
+  };
+  Query.prototype.removeDeferItem = function (item) {
+    if (!this.defers) {
+      return;
+    }
+    this.defers.remove(item);
+    if (this.defers.length < 1) {
+      this.destroy();
+    }
+  };
+  function pusher (n, fifo) {
+    fifo.push(n);
+  }
+  function notifier (n, defer) {
+    defer.notify(n);
+  }
+  Query.prototype.onLevelDBData = function (key, value) {
+    var kva;
+    if (!(this.defers && this.traversers)) {
+      return;
+    }
+    if (this.keyfilter.isOK(key) && this.valfilter.isOK(value)) {
+      kva = [key, value];
+      this.traversers.traverse(pusher.bind(null, kva));
+      this.defers.traverse(notifier.bind(null, kva));
+    }
+  };
+  Query.prototype.onTraverseDone = function (defer, traverseitem, starteddefer) {
+    var recordcount, deferitem;
+    if (traverseitem) {
+      recordcount = traverseitem.content.length;
+      traverseitem.content.drain(defer.notify.bind(defer));
+      this.traversers.remove(traverseitem);
+    } else {
+      recordcount = 0;
+    }
+    if (starteddefer) {
+      starteddefer.resolve(recordcount);
+    }
+    deferitem = this.defers.push(defer);
+    defer.promise.then(this.removeDeferItem.bind(this, deferitem));
+  };
+
+  return Query;
+}
+
+module.exports = createQuery;
+
+},{}],86:[function(require,module,exports){
+function createQueryLib (execlib, datafilterslib) {
+  'use strict';
+
+  var Query = require('./creator')(execlib, datafilterslib);
+
+  require('./querytaskcreator')(execlib);
+
+  return {
+    Query: Query,
+    SessionMixin: require('./sessionmixincreator')(execlib, Query)
+  };
+}
+
+module.exports = createQueryLib;
+
+},{"./creator":85,"./querytaskcreator":87,"./sessionmixincreator":88}],87:[function(require,module,exports){
+function createQueryLDBTask (execlib) {
+  'use strict';
+
+  var lib = execlib.lib,
+    execSuite = execlib.execSuite,
+    taskRegistry = execSuite.taskRegistry,
+    SinkTask = execSuite.SinkTask;
+
+  function QueryLevelDBTask (prophash) {
+    SinkTask.call(this, prophash);
+    this.sink = prophash.sink;
+    this.queryMethodName = prophash.queryMethodName || 'query';
+    this.id = null;
+    this.filter = prophash.filter;
+    this.scanInitially = prophash.scanInitially;
+    this.onPut = prophash.onPut;
+    this.onDel = prophash.onDel;
+    this.onInit = prophash.onInit;
+    this.running = null;
+  }
+  lib.inherit(QueryLevelDBTask, SinkTask);
+  QueryLevelDBTask.prototype.__cleanUp = function () {
+    this.running = null;
+    this.onInit = null;
+    this.onDel = null;
+    this.onPut = null;
+    this.scanInitially = null;
+    this.filter = null;
+    if (this.sink && this.sink.destroyed && this.id) {
+      this.sink.sessionCall('stopQuery', this.id);
+    }
+    this.id = null;
+    this.sink = null;
+  };
+  QueryLevelDBTask.prototype.go = function () {
+    if (this.running) {
+      return;
+    }
+    if (!this.sink) {
+      return;
+    }
+    this.running = this.sink.sessionCall(this.queryMethodName, this.filter, this.scanInitially);
+    this.running.then(
+      this.destroy.bind(this),
+      this.destroy.bind(this),
+      this.onNotification.bind(this)
+    );
+  };
+  QueryLevelDBTask.prototype.onNotification = function (kva) {
+    var key, value, spec;
+    if (!lib.isArray(kva)) {
+      return;
+    }
+    key = kva[0], value = kva[1];
+    if (kva.length === 3) {
+      spec = kva[2];
+      if (!this.id) {
+        this.id = spec;
+      } else {
+        if (this.onInit) {
+          this.onInit(spec);
+        }
+      }
+      return;
+    }
+    if (value) {
+      if (this.onPut) {
+        this.onPut(kva);
+      }
+    } else {
+      if (this.onDel) {
+        this.onDel(key);
+      }
+    }
+  };
+
+  QueryLevelDBTask.prototype.compulsoryConstructionProperties = ['sink', 'scanInitially', 'onPut', 'onDel'];
+
+  taskRegistry.register('allex_leveldblib', [{name: 'queryLevelDB', klass: QueryLevelDBTask}]);
+}
+
+module.exports = createQueryLDBTask;
+
+
+},{}],88:[function(require,module,exports){
+function createSessionMixin (execlib, Query) {
+  'use strict';
+
+  var lib = execlib.lib,
+    q = lib.q;
+
+  function resolver(defer) {
+    defer.resolve(true);
+  }
+
+  function startnotifier(defer, recordcount) {
+    defer.notify([null, null, recordcount]);
+    defer = null;
+  }
+
+  function QuerableUserSessionMixin () {
+    this.queries = new lib.Map();
+  }
+  QuerableUserSessionMixin.prototype.destroy = function () {
+    if (this.queries) {
+      this.queries.traverse(resolver);
+      this.queries.destroy();
+    }
+    this.queries = null;
+  };
+  QuerableUserSessionMixin.prototype.stopQuery = function (deferid, defer) {
+    var qd;
+    if (!this.queries) {
+      defer.resolve(true);
+      return;
+    }
+    qd = this.queries.remove(deferid);
+    if (qd) {
+      qd.resolve(true);
+    }
+    defer.resolve(true);
+  };
+  QuerableUserSessionMixin.prototype.onQueryDeferDone = function (deferid) {
+    if (this.queries) {
+      this.queries.remove(deferid);
+    }
+  };
+  function onDB (qu, methodname, filterdesc, scaninitially, defer, db) {
+    var starteddefer, deferid, oqdr;
+    if (!db) {
+      defer.reject(new lib.Error('NO_LEVELDB'));
+      return;
+    }
+    if (!qu.queries) {
+      defer.reject(new lib.Error('QUERY_DESTROYED'));
+      return;
+    }
+    if (scaninitially) {
+      starteddefer = q.defer();
+      starteddefer.promise.then(startnotifier.bind(null, defer));
+    }
+    deferid = lib.uid();
+    qu.queries.add(deferid, defer);
+    oqdr = qu.onQueryDeferDone.bind(qu, deferid);
+    defer.promise.then(
+      oqdr,
+      oqdr
+    );
+    defer.notify([null, null, deferid]);
+    if (!scaninitially) {
+      startnotifier(defer, 0);
+    }
+    db[methodname](filterdesc, defer, starteddefer);
+  }
+  QuerableUserSessionMixin.queryMethodGenerator = function (servicetodbcb, methodname) {
+    return function (filterdesc, scaninitially, defer) {
+      var db;
+      if (!(this.user && this.user.__service && this.user.__service.aboutToDie)) {
+        defer.reject(new lib.Error('SERVICE_DEAD'));
+      }
+      db = servicetodbcb(this.user.__service);
+      if (db.then) {
+        db.then(
+          onDB.bind(null, this, methodname, filterdesc, scaninitially, defer),
+          defer.reject.bind(defer)
+        );
+      } else {
+        onDB(this, methodname, filterdesc, scaninitially, defer, db);
+      }
+    };
+  };
+
+  QuerableUserSessionMixin.addMethods = function (klass) {
+    lib.inheritMethods(klass, QuerableUserSessionMixin,
+      'stopQuery',
+      'onQueryDeferDone'
+    );
+  };
+
+  QuerableUserSessionMixin.queryMethodParamDescriptor = [{
+    title: 'Filter Descriptor',
+    type: 'object'
+  },{
+    title: 'Scan initially',
+    type: 'boolean'
+  }];
+
+  QuerableUserSessionMixin.stopQueryMethodDescriptor = {
+    stopQuery: [{
+      title: 'Defer ID',
+      type: 'string'
+    }]
+  };
+
+  return QuerableUserSessionMixin;
+
+}
+
+module.exports = createSessionMixin;
+
+},{}],89:[function(require,module,exports){
 function createQueueableHandler(execlib, leveldblib) {
   'use strict';
   var lib = execlib.lib,
@@ -8693,15 +9463,33 @@ function createQueueableHandler(execlib, leveldblib) {
     */
     this.processQ([qitem]);
   };
-  function putter(batch, item) {
+  function putter(batch, opevent, item) {
     var operationname = item[0],
-      operation = batch[operationname];
+      operation = batch[operationname],
+      defer = item[2];
     if (operation) {
       //console.log(operationname, 'for batch', item[1]);
+      if (opevent) {
+        if (operationname === 'put') {
+          defer.promise.then(opevent.fire.bind(opevent, item[1][0], item[1][1]));
+        }
+        if (operationname === 'del') {
+          defer.promise.then(opevent.fire.bind(opevent, item[1][0]));
+        }
+      }
+      try {
       operation.apply(batch, item[1]);
+      } catch (e) {
+        if (defer) {
+          defer.reject(e);
+        } else {
+          throw e;
+        }
+      }
     }
   }
   QueueableDBHandler.prototype.processQ = function (_q) {
+    var ret, batch;
     if (this._busy) {
       console.trace();
       console.log(this.dbname, 'BUSYYYYYY');
@@ -8712,11 +9500,19 @@ function createQueueableHandler(execlib, leveldblib) {
     }
     //console.log('processQ', _q.length);
     this.begin();
-    var batch = this.db.batch();
-    consume(_q, putter.bind(null, batch));
-    batch.write(this.finish.bind(this, _q));
+    ret = this._busy.promise;
+    batch = this.db.batch();
+    try {
+      consume(_q, putter.bind(null, batch, this.opEvent));
+    } catch (e) {
+      this._busy.reject(e);
+      this._busy = null;
+    }
+    if (this._busy) {
+      batch.write(this.finish.bind(this, _q));
+    }
     batch = null;
-    return this._busy.promise;
+    return ret;
   };
   QueueableDBHandler.consume = consume;
 
@@ -8726,7 +9522,7 @@ function createQueueableHandler(execlib, leveldblib) {
 module.exports = createQueueableHandler;
 
 
-},{}],80:[function(require,module,exports){
+},{}],90:[function(require,module,exports){
 function createQueueableMixin (execlib) {
   'use strict';
   var lib = execlib.lib,
@@ -8860,14 +9656,14 @@ function createQueueableMixin (execlib) {
 
 module.exports = createQueueableMixin;
 
-},{}],81:[function(require,module,exports){
+},{}],91:[function(require,module,exports){
 module.exports = [{
   title: 'Streaming Defer Id',
   type: 'string',
   strongtype: 'String'
 }];
 
-},{}],82:[function(require,module,exports){
+},{}],92:[function(require,module,exports){
 function createServicePackMixin(execlib, datafilterslib) {
   var lib = execlib.lib,
     q = lib.q,
@@ -8966,7 +9762,7 @@ function createServicePackMixin(execlib, datafilterslib) {
 
 module.exports = createServicePackMixin;
 
-},{"./resumeleveldbstreamdescriptor":81}],83:[function(require,module,exports){
+},{"./resumeleveldbstreamdescriptor":91}],93:[function(require,module,exports){
 function createShift2Pusher(execlib, leveldblib) {
   'use strict';
   var lib = execlib.lib,
@@ -9056,7 +9852,7 @@ function createShift2Pusher(execlib, leveldblib) {
 
 module.exports = createShift2Pusher;
 
-},{}],84:[function(require,module,exports){
+},{}],94:[function(require,module,exports){
 function createStreamInSink(execlib) {
   var q = execlib.lib.q,
     qlib = execlib.lib.qlib;
@@ -9091,7 +9887,7 @@ function createStreamInSink(execlib) {
 
 module.exports = createStreamInSink;
 
-},{}],85:[function(require,module,exports){
+},{}],95:[function(require,module,exports){
 function createChainedOperationsJob(execlib) {
   'use strict';
 
@@ -9103,7 +9899,7 @@ function createChainedOperationsJob(execlib) {
 
 module.exports = createChainedOperationsJob;
 
-},{}],86:[function(require,module,exports){
+},{}],96:[function(require,module,exports){
 function createFiniteLengthInsertJob(execlib, KnownLengthInsertJob) {
   'use strict';
   var lib = execlib.lib,
@@ -9135,7 +9931,7 @@ function createFiniteLengthInsertJob(execlib, KnownLengthInsertJob) {
 
 module.exports = createFiniteLengthInsertJob;
 
-},{}],87:[function(require,module,exports){
+},{}],97:[function(require,module,exports){
 function createKnownLengthInsertJob(execlib, JobBase) {
   'use strict';
   var lib = execlib.lib,
@@ -9196,7 +9992,7 @@ function createKnownLengthInsertJob(execlib, JobBase) {
 
 module.exports = createKnownLengthInsertJob;
 
-},{}],88:[function(require,module,exports){
+},{}],98:[function(require,module,exports){
 'use strict'
 
 exports.byteLength = byteLength
@@ -9312,11 +10108,11 @@ function fromByteArray (uint8) {
   return parts.join('')
 }
 
-},{}],89:[function(require,module,exports){
+},{}],99:[function(require,module,exports){
 
-},{}],90:[function(require,module,exports){
-arguments[4][89][0].apply(exports,arguments)
-},{"dup":89}],91:[function(require,module,exports){
+},{}],100:[function(require,module,exports){
+arguments[4][99][0].apply(exports,arguments)
+},{"dup":99}],101:[function(require,module,exports){
 (function (global){
 'use strict';
 
@@ -9428,7 +10224,7 @@ exports.allocUnsafeSlow = function allocUnsafeSlow(size) {
 }
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"buffer":92}],92:[function(require,module,exports){
+},{"buffer":102}],102:[function(require,module,exports){
 (function (global){
 /*!
  * The buffer module from node.js, for the browser.
@@ -11221,7 +12017,7 @@ function isnan (val) {
 }
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"base64-js":88,"ieee754":95,"isarray":98}],93:[function(require,module,exports){
+},{"base64-js":98,"ieee754":105,"isarray":108}],103:[function(require,module,exports){
 (function (Buffer){
 // Copyright Joyent, Inc. and other Node contributors.
 //
@@ -11332,7 +12128,7 @@ function objectToString(o) {
 }
 
 }).call(this,{"isBuffer":require("../../is-buffer/index.js")})
-},{"../../is-buffer/index.js":97}],94:[function(require,module,exports){
+},{"../../is-buffer/index.js":107}],104:[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -11636,7 +12432,7 @@ function isUndefined(arg) {
   return arg === void 0;
 }
 
-},{}],95:[function(require,module,exports){
+},{}],105:[function(require,module,exports){
 exports.read = function (buffer, offset, isLE, mLen, nBytes) {
   var e, m
   var eLen = nBytes * 8 - mLen - 1
@@ -11722,9 +12518,9 @@ exports.write = function (buffer, value, offset, isLE, mLen, nBytes) {
   buffer[offset + i - d] |= s * 128
 }
 
-},{}],96:[function(require,module,exports){
-arguments[4][43][0].apply(exports,arguments)
-},{"dup":43}],97:[function(require,module,exports){
+},{}],106:[function(require,module,exports){
+arguments[4][49][0].apply(exports,arguments)
+},{"dup":49}],107:[function(require,module,exports){
 /*!
  * Determine if an object is a Buffer
  *
@@ -11747,14 +12543,14 @@ function isSlowBuffer (obj) {
   return typeof obj.readFloatLE === 'function' && typeof obj.slice === 'function' && isBuffer(obj.slice(0, 0))
 }
 
-},{}],98:[function(require,module,exports){
+},{}],108:[function(require,module,exports){
 var toString = {}.toString;
 
 module.exports = Array.isArray || function (arr) {
   return toString.call(arr) == '[object Array]';
 };
 
-},{}],99:[function(require,module,exports){
+},{}],109:[function(require,module,exports){
 (function (process){
 // Copyright Joyent, Inc. and other Node contributors.
 //
@@ -11982,7 +12778,7 @@ var substr = 'ab'.substr(-1) === 'b'
 ;
 
 }).call(this,require('_process'))
-},{"_process":101}],100:[function(require,module,exports){
+},{"_process":111}],110:[function(require,module,exports){
 (function (process){
 'use strict';
 
@@ -12029,7 +12825,7 @@ function nextTick(fn, arg1, arg2, arg3) {
 }
 
 }).call(this,require('_process'))
-},{"_process":101}],101:[function(require,module,exports){
+},{"_process":111}],111:[function(require,module,exports){
 // shim for using process in browser
 var process = module.exports = {};
 
@@ -12211,10 +13007,10 @@ process.chdir = function (dir) {
 };
 process.umask = function() { return 0; };
 
-},{}],102:[function(require,module,exports){
+},{}],112:[function(require,module,exports){
 module.exports = require("./lib/_stream_duplex.js")
 
-},{"./lib/_stream_duplex.js":103}],103:[function(require,module,exports){
+},{"./lib/_stream_duplex.js":113}],113:[function(require,module,exports){
 // a duplex stream is just a stream that is both readable and writable.
 // Since JS doesn't have multiple prototypal inheritance, this class
 // prototypally inherits from Readable, and then parasitically from
@@ -12290,7 +13086,7 @@ function forEach(xs, f) {
     f(xs[i], i);
   }
 }
-},{"./_stream_readable":105,"./_stream_writable":107,"core-util-is":93,"inherits":96,"process-nextick-args":100}],104:[function(require,module,exports){
+},{"./_stream_readable":115,"./_stream_writable":117,"core-util-is":103,"inherits":106,"process-nextick-args":110}],114:[function(require,module,exports){
 // a passthrough stream.
 // basically just the most minimal sort of Transform stream.
 // Every written chunk gets output as-is.
@@ -12317,7 +13113,7 @@ function PassThrough(options) {
 PassThrough.prototype._transform = function (chunk, encoding, cb) {
   cb(null, chunk);
 };
-},{"./_stream_transform":106,"core-util-is":93,"inherits":96}],105:[function(require,module,exports){
+},{"./_stream_transform":116,"core-util-is":103,"inherits":106}],115:[function(require,module,exports){
 (function (process){
 'use strict';
 
@@ -13261,7 +14057,7 @@ function indexOf(xs, x) {
   return -1;
 }
 }).call(this,require('_process'))
-},{"./_stream_duplex":103,"./internal/streams/BufferList":108,"_process":101,"buffer":92,"buffer-shims":91,"core-util-is":93,"events":94,"inherits":96,"isarray":98,"process-nextick-args":100,"string_decoder/":114,"util":89}],106:[function(require,module,exports){
+},{"./_stream_duplex":113,"./internal/streams/BufferList":118,"_process":111,"buffer":102,"buffer-shims":101,"core-util-is":103,"events":104,"inherits":106,"isarray":108,"process-nextick-args":110,"string_decoder/":124,"util":99}],116:[function(require,module,exports){
 // a transform stream is a readable/writable stream where you do
 // something with the data.  Sometimes it's called a "filter",
 // but that's not a great name for it, since that implies a thing where
@@ -13444,7 +14240,7 @@ function done(stream, er, data) {
 
   return stream.push(null);
 }
-},{"./_stream_duplex":103,"core-util-is":93,"inherits":96}],107:[function(require,module,exports){
+},{"./_stream_duplex":113,"core-util-is":103,"inherits":106}],117:[function(require,module,exports){
 (function (process){
 // A bit simpler than readable streams.
 // Implement an async ._write(chunk, encoding, cb), and it'll handle all
@@ -14001,7 +14797,7 @@ function CorkedRequest(state) {
   };
 }
 }).call(this,require('_process'))
-},{"./_stream_duplex":103,"_process":101,"buffer":92,"buffer-shims":91,"core-util-is":93,"events":94,"inherits":96,"process-nextick-args":100,"util-deprecate":115}],108:[function(require,module,exports){
+},{"./_stream_duplex":113,"_process":111,"buffer":102,"buffer-shims":101,"core-util-is":103,"events":104,"inherits":106,"process-nextick-args":110,"util-deprecate":125}],118:[function(require,module,exports){
 'use strict';
 
 var Buffer = require('buffer').Buffer;
@@ -14066,10 +14862,10 @@ BufferList.prototype.concat = function (n) {
   }
   return ret;
 };
-},{"buffer":92,"buffer-shims":91}],109:[function(require,module,exports){
+},{"buffer":102,"buffer-shims":101}],119:[function(require,module,exports){
 module.exports = require("./lib/_stream_passthrough.js")
 
-},{"./lib/_stream_passthrough.js":104}],110:[function(require,module,exports){
+},{"./lib/_stream_passthrough.js":114}],120:[function(require,module,exports){
 (function (process){
 var Stream = (function (){
   try {
@@ -14089,13 +14885,13 @@ if (!process.browser && process.env.READABLE_STREAM === 'disable' && Stream) {
 }
 
 }).call(this,require('_process'))
-},{"./lib/_stream_duplex.js":103,"./lib/_stream_passthrough.js":104,"./lib/_stream_readable.js":105,"./lib/_stream_transform.js":106,"./lib/_stream_writable.js":107,"_process":101}],111:[function(require,module,exports){
+},{"./lib/_stream_duplex.js":113,"./lib/_stream_passthrough.js":114,"./lib/_stream_readable.js":115,"./lib/_stream_transform.js":116,"./lib/_stream_writable.js":117,"_process":111}],121:[function(require,module,exports){
 module.exports = require("./lib/_stream_transform.js")
 
-},{"./lib/_stream_transform.js":106}],112:[function(require,module,exports){
+},{"./lib/_stream_transform.js":116}],122:[function(require,module,exports){
 module.exports = require("./lib/_stream_writable.js")
 
-},{"./lib/_stream_writable.js":107}],113:[function(require,module,exports){
+},{"./lib/_stream_writable.js":117}],123:[function(require,module,exports){
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -14224,9 +15020,9 @@ Stream.prototype.pipe = function(dest, options) {
   return dest;
 };
 
-},{"events":94,"inherits":96,"readable-stream/duplex.js":102,"readable-stream/passthrough.js":109,"readable-stream/readable.js":110,"readable-stream/transform.js":111,"readable-stream/writable.js":112}],114:[function(require,module,exports){
-arguments[4][74][0].apply(exports,arguments)
-},{"buffer":92,"dup":74}],115:[function(require,module,exports){
+},{"events":104,"inherits":106,"readable-stream/duplex.js":112,"readable-stream/passthrough.js":119,"readable-stream/readable.js":120,"readable-stream/transform.js":121,"readable-stream/writable.js":122}],124:[function(require,module,exports){
+arguments[4][80][0].apply(exports,arguments)
+},{"buffer":102,"dup":80}],125:[function(require,module,exports){
 (function (global){
 
 /**
@@ -14297,16 +15093,16 @@ function config (name) {
 }
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{}],116:[function(require,module,exports){
-arguments[4][43][0].apply(exports,arguments)
-},{"dup":43}],117:[function(require,module,exports){
+},{}],126:[function(require,module,exports){
+arguments[4][49][0].apply(exports,arguments)
+},{"dup":49}],127:[function(require,module,exports){
 module.exports = function isBuffer(arg) {
   return arg && typeof arg === 'object'
     && typeof arg.copy === 'function'
     && typeof arg.fill === 'function'
     && typeof arg.readUInt8 === 'function';
 }
-},{}],118:[function(require,module,exports){
+},{}],128:[function(require,module,exports){
 (function (process,global){
 // Copyright Joyent, Inc. and other Node contributors.
 //
@@ -14896,4 +15692,4 @@ function hasOwnProperty(obj, prop) {
 }
 
 }).call(this,require('_process'),typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./support/isBuffer":117,"_process":101,"inherits":116}]},{},[1]);
+},{"./support/isBuffer":127,"_process":111,"inherits":126}]},{},[1]);
