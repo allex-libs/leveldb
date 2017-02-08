@@ -3,7 +3,7 @@ var levelup = require('level-browserify'),
   fs = require('fs'),
   mkdirp = require('mkdirp');
 
-function createDBHandler (execlib, datafilterslib, encodingMakeup) {
+function createDBHandler (execlib, datafilterslib, encodingMakeup, Query) {
   'use strict';
   var lib = execlib.lib,
     q = lib.q,
@@ -104,6 +104,7 @@ function createDBHandler (execlib, datafilterslib, encodingMakeup) {
     this.get = null;
     this.del = null;
     this.opEvent = prophash.listenable ? new lib.HookCollection() : null;
+    this.queries = prophash.listenable ? new lib.Map() : null;
     this.setDB(new FakeDB());
     if (prophash.initiallyemptydb) {
       //console.log(prophash.dbname, 'initiallyemptydb!');
@@ -113,6 +114,11 @@ function createDBHandler (execlib, datafilterslib, encodingMakeup) {
     }
   }
   LevelDBHandler.prototype.destroy = function () {
+    if (this.queries) {
+      lib.containerDestroyAll(this.queries);
+      this.queries.destroy();
+    }
+    this.queries = null;
     if (this.opEvent) {
       this.opEvent.destroy();
     }
@@ -417,33 +423,31 @@ function createDBHandler (execlib, datafilterslib, encodingMakeup) {
       d = (options ? options.defer : null) || q.defer(),
       destroyables = [stream],
       _lisa = lib.isArray,
-      _lada = lib.arryDestroyAll;
-    switch (typeof (options ? options.filter : void 0)) {
-      case 'function':
-        stream.on('data', functionFilterStreamTraverser.bind(null, options.filter, stream, cb));
-        break;
-      case 'object':
-        try {
-          destroyables.push(
-            datafilterer(
-              datafilterslib.createFromDescriptor(options.filter),
-              datafilterslib.createFromDescriptor(options.keyfilter)
-            )
-          );
-          stream.on('data', functionFilterStreamTraverser.bind(
-            null, 
-            destroyables[1],
-            stream,
-            cb));
-        } catch (e) {
-          console.error(e.stack);
-          console.error(e);
-          stream.on('data', streamTraverser.bind(null, stream, cb));
-        }
-        break;
-      default:
+      _lada = lib.arryDestroyAll,
+      filtertype = typeof (options ? options.filter : void 0),
+      keyfiltertype = typeof (options ? options.keyfilter : void 0);
+    if (filtertype === 'function') {
+      stream.on('data', functionFilterStreamTraverser.bind(null, options.filter, stream, cb));
+    } else if (filtertype === 'object' || keyfiltertype === 'object') {
+      try {
+        destroyables.push(
+          datafilterer(
+            datafilterslib.createFromDescriptor(options.filter),
+            datafilterslib.createFromDescriptor(options.keyfilter)
+          )
+        );
+        stream.on('data', functionFilterStreamTraverser.bind(
+          null, 
+          destroyables[1],
+          stream,
+          cb));
+      } catch (e) {
+        console.error(e.stack);
+        console.error(e);
         stream.on('data', streamTraverser.bind(null, stream, cb));
-        break;
+      }
+    } else {
+      stream.on('data', streamTraverser.bind(null, stream, cb));
     }
     //stream.on('end', streamEnder.bind(null, d, stream, destroyables));
     stream.on('end', function streamEnder() {
@@ -483,6 +487,18 @@ function createDBHandler (execlib, datafilterslib, encodingMakeup) {
     return this.db.createReadStream(options);
   };
   // end of reading/traversing section//
+
+  LevelDBHandler.prototype.query = function (filterdesc, defer, starteddefer) {
+    var id = filterdesc ? JSON.stringify(filterdesc) : '',
+      _q = this.queries.get(id),
+      ret = starteddefer ? starteddefer.promise : q(true);
+    if (!_q) {
+      _q = new Query(id, this, filterdesc);
+      this.queries.add(id, _q);
+    }
+    _q.add(defer, starteddefer);
+    return ret;
+  };
   
   // helpers //
   function dumper(dumperobj, keyvalobj) {

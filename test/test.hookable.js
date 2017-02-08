@@ -55,13 +55,13 @@ describe ('Hook on 2-segment key DB', function () {
     hookTo: {keys: [['a', '1']], scan: true}
   });
   createWriteAndGetInHookIt({
-    hookname: 'Hook1',
+    expectablename: 'Hook1',
     dbname: 'db',
     key: ['a', '1'],
     value: '2'
   });
   createWriteAndNotGetInHookIt({
-    hookname: 'Hook1',
+    expectablename: 'Hook1',
     dbname: 'db',
     key: ['b', '1'],
     value: 1
@@ -75,7 +75,7 @@ describe ('Hook on 2-segment key DB', function () {
     );
   });
   createWriteAndNotGetInHookIt({
-    hookname: 'Hook1',
+    expectablename: 'Hook1',
     dbname: 'db',
     key: ['a', '1'],
     value: 1
@@ -84,7 +84,7 @@ describe ('Hook on 2-segment key DB', function () {
     return Hook1.hook({keys: [['***', '1']], scan: true});
   });
   createWriteAndGetInHookIt({
-    hookname: 'Hook1',
+    expectablename: 'Hook1',
     dbname: 'db',
     key: ['?', '1'],
     value: '5'
@@ -111,13 +111,13 @@ describe ('Hook on 2-segment key DB', function () {
     }, scan: true}
   });
   createWriteAndGetInHookIt({
-    hookname: 'Hook2',
+    expectablename: 'Hook2',
     dbname: 'db',
     key: ['a', '1'],
     value: {blah: 3}
   });
   createWriteAndNotGetInHookIt({
-    hookname: 'Hook2',
+    expectablename: 'Hook2',
     dbname: 'db',
     key: ['b', '1'],
     value: {blah: 7}

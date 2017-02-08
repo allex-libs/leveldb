@@ -4,6 +4,7 @@ function realCreator(execlib, datafilterslib, bufferlib) {
     q = lib.q,
     qlib = lib.qlib,
     encodingMakeup,
+    querylib,
     LevelDBHandler;
 
   var _nullcodec = {
@@ -46,7 +47,9 @@ function realCreator(execlib, datafilterslib, bufferlib) {
   };
 
   encodingMakeup = require('./encodingmakeupcreator')(execlib, ret, bufferlib);
-  LevelDBHandler = require('./dbhandlercreator')(execlib, datafilterslib, encodingMakeup);
+  querylib = require('./query')(execlib, datafilterslib);
+  //Query = require('./querycreator')(execlib, datafilterslib);
+  LevelDBHandler = require('./dbhandlercreator')(execlib, datafilterslib, encodingMakeup, querylib.Query);
   function creator(hash) {
     return new LevelDBHandler(hash);
   }
@@ -63,6 +66,7 @@ function realCreator(execlib, datafilterslib, bufferlib) {
   ret.ChainedOperationsJob = require('./transactions/chainedoperationsjobcreator')(execlib, qlib.JobBase);
   ret.ServiceUserMixin = require('./serviceusermixincreator')(execlib, datafilterslib);
   require('./hook')(execlib, ret, datafilterslib);
+  ret.QuerableUserSessionMixin = querylib.SessionMixin;
   ret.streamInSink = require('./streaminsinkcreator')(execlib);
   ret.enhanceSink = function(sinkklass) {
     sinkklass.prototype.ClientUser.prototype.__methodDescriptors.resumeLevelDBStream = require('./resumeleveldbstreamdescriptor');

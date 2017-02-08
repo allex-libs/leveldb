@@ -1,7 +1,11 @@
 'use strict';
 
 var utils = require('./utils'),
-  inFCH = utils.instancenameFromCreationHash.bind(null, 'hook');
+  inFCH = utils.instancenameFromCreationHash.bind(null, 'hook'),
+  expecterswaiters = require('./expecterswriters'),
+  writeForHook = expecterswaiters.writeForWaitable,
+  expectForHook = expecterswaiters.expectForWaitable,
+  expectEmptyForHook = expecterswaiters.expectEmptyForWaitable;
 
 function HookHandlerBase (creationhash) {
   this.defer = null;
@@ -168,63 +172,8 @@ function createSinkLevelDBHookIt (creationhash) {
 
 setGlobal('createSinkLevelDBHookIt', createSinkLevelDBHookIt);
 
-function writeForSingleHook (creationhash) {
-  var db = getGlobal(creationhash.dbname),
-    hook = getGlobal(creationhash.hookname),
-    key = creationhash.key,
-    val = creationhash.value,
-    putparams = creationhash.putparams,
-    expct = creationhash.expect || val,
-    p,
-    w;
-  creationhash = null;
-  w = hook.wait();
-  p = putparams ? db.put.apply(db, putparams) : db.put(key, val);
-  p.then(
-    hook.wait.bind(hook)
-  );
-  return {promise: w, expect: expct};
-}
-
-function writeForHookArray (creationhash) {
-  var db = getGlobal(creationhash.dbname),
-    hooks = creationhash.hookname.map(getGlobal),
-    key = creationhash.key,
-    val = creationhash.value,
-    putparams = creationhash.putparams,
-    expct = creationhash.expect || val,
-    p,
-    w;
-  function waiter (_h) {return _h.wait();}
-  w = q.all(hooks.map(waiter));
-  p = putparams ? db.put.apply(db, putparams) : db.put(key, val);
-  p.then(hooks.forEach.bind(hooks, waiter));
-  return {promise: w, expect: expct};
-}
-
-function writeForHook (creationhash) {
-  if (lib.isArray(creationhash.hookname)) {
-    return writeForHookArray(creationhash);
-  }
-  return writeForSingleHook(creationhash);
-}
-
-function expectForHook (creationhash, pe) {
-  if (lib.isArray(creationhash.hookname)) {
-    return pe.promise.then(function (res) {
-      res.forEach(function(v) {
-        expect(v[1]).to.equal(pe.expect)
-      });
-      pe = null;
-      return q(true);
-    });
-  } else {
-    return expect(pe.promise).to.eventually.have.property(1, pe.expect);
-  }
-}
-
 function createWriteAndGetInHookIt (creationhash) {
-  it ('Write to '+creationhash.dbname+' and get data in hook '+creationhash.hookname, function () {
+  it ('Write to '+creationhash.dbname+' and get data in hook '+creationhash.expectablename, function () {
     var pe = writeForHook(creationhash), ret;
     ret = expectForHook(creationhash, pe);
     creationhash = null;
@@ -234,19 +183,8 @@ function createWriteAndGetInHookIt (creationhash) {
 
 setGlobal('createWriteAndGetInHookIt', createWriteAndGetInHookIt);
 
-function expectEmptyForHook (creationhash, pe) {
-  if (lib.isArray(creationhash.hookname)) {
-    return pe.promise.then(function (res) {
-      res.forEach(function (r) {
-        expect(r).to.be.empty;
-      });
-    });
-  }
-  return expect(pe.promise).to.eventually.be.empty;
-}
-
 function createWriteAndNotGetInHookIt (creationhash) {
-  it ('Write to '+creationhash.dbname+' and NOT get data in hook '+creationhash.hookname, function () {
+  it ('Write to '+creationhash.dbname+' and NOT get data in hook '+creationhash.expectablename, function () {
     var pe = writeForHook(creationhash), ret;
     ret = expectEmptyForHook(creationhash, pe);
     creationhash = null;
