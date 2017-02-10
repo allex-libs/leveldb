@@ -63,7 +63,7 @@ function createQueryLDBTask (execlib) {
       }
       return;
     }
-    if (value) {
+    if (lib.isVal(value)) {
       if (this.onPut) {
         this.onPut(kva);
       }

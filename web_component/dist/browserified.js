@@ -519,8 +519,8 @@ function createVerbatimDecoder(execlib) {
 
 module.exports = createVerbatimDecoder;
 
-}).call(this,{"isBuffer":require("../../../node_modules/allex-toolbox-dev/node_modules/is-buffer/index.js")})
-},{"../../../node_modules/allex-toolbox-dev/node_modules/is-buffer/index.js":107}],23:[function(require,module,exports){
+}).call(this,{"isBuffer":require("../../../../../../../../../lib/node_modules/allex-toolbox-dev/node_modules/is-buffer/index.js")})
+},{"../../../../../../../../../lib/node_modules/allex-toolbox-dev/node_modules/is-buffer/index.js":107}],23:[function(require,module,exports){
 function createDBArray(execlib, leveldblib) {
   'use strict';
   var lib = execlib.lib,
@@ -2464,8 +2464,8 @@ module.exports.AbstractLevelDOWN    = AbstractLevelDOWN
 module.exports.AbstractIterator     = AbstractIterator
 module.exports.AbstractChainedBatch = AbstractChainedBatch
 
-}).call(this,{"isBuffer":require("../../../../node_modules/allex-toolbox-dev/node_modules/is-buffer/index.js")},require('_process'))
-},{"../../../../node_modules/allex-toolbox-dev/node_modules/is-buffer/index.js":107,"./abstract-chained-batch":32,"./abstract-iterator":33,"_process":111,"xtend":35}],35:[function(require,module,exports){
+}).call(this,{"isBuffer":require("../../../../../../../../../../lib/node_modules/allex-toolbox-dev/node_modules/is-buffer/index.js")},require('_process'))
+},{"../../../../../../../../../../lib/node_modules/allex-toolbox-dev/node_modules/is-buffer/index.js":107,"./abstract-chained-batch":32,"./abstract-iterator":33,"_process":111,"xtend":35}],35:[function(require,module,exports){
 module.exports = extend
 
 function extend() {
@@ -2594,8 +2594,8 @@ function objectToString(o) {
   return Object.prototype.toString.call(o);
 }
 
-}).call(this,{"isBuffer":require("../../../../../node_modules/allex-toolbox-dev/node_modules/is-buffer/index.js")})
-},{"../../../../../node_modules/allex-toolbox-dev/node_modules/is-buffer/index.js":107}],37:[function(require,module,exports){
+}).call(this,{"isBuffer":require("../../../../../../../../../../../lib/node_modules/allex-toolbox-dev/node_modules/is-buffer/index.js")})
+},{"../../../../../../../../../../../lib/node_modules/allex-toolbox-dev/node_modules/is-buffer/index.js":107}],37:[function(require,module,exports){
 var util = require('util')
   , AbstractIterator = require('abstract-leveldown').AbstractIterator
 
@@ -2690,8 +2690,8 @@ DeferredLevelDOWN.prototype._iterator = function (options) {
 module.exports                  = DeferredLevelDOWN
 module.exports.DeferredIterator = DeferredIterator
 
-}).call(this,{"isBuffer":require("../../../../node_modules/allex-toolbox-dev/node_modules/is-buffer/index.js")},require('_process'))
-},{"../../../../node_modules/allex-toolbox-dev/node_modules/is-buffer/index.js":107,"./deferred-iterator":37,"_process":111,"abstract-leveldown":42,"util":128}],39:[function(require,module,exports){
+}).call(this,{"isBuffer":require("../../../../../../../../../../lib/node_modules/allex-toolbox-dev/node_modules/is-buffer/index.js")},require('_process'))
+},{"../../../../../../../../../../lib/node_modules/allex-toolbox-dev/node_modules/is-buffer/index.js":107,"./deferred-iterator":37,"_process":111,"abstract-leveldown":42,"util":128}],39:[function(require,module,exports){
 (function (process){
 /* Copyright (c) 2013 Rod Vagg, MIT License */
 
@@ -3051,8 +3051,8 @@ AbstractLevelDOWN.prototype._checkKey = function (obj, type) {
 
 module.exports = AbstractLevelDOWN
 
-}).call(this,{"isBuffer":require("../../../../../../node_modules/allex-toolbox-dev/node_modules/is-buffer/index.js")},require('_process'))
-},{"../../../../../../node_modules/allex-toolbox-dev/node_modules/is-buffer/index.js":107,"./abstract-chained-batch":39,"./abstract-iterator":40,"_process":111,"xtend":44}],42:[function(require,module,exports){
+}).call(this,{"isBuffer":require("../../../../../../../../../../../../lib/node_modules/allex-toolbox-dev/node_modules/is-buffer/index.js")},require('_process'))
+},{"../../../../../../../../../../../../lib/node_modules/allex-toolbox-dev/node_modules/is-buffer/index.js":107,"./abstract-chained-batch":39,"./abstract-iterator":40,"_process":111,"xtend":44}],42:[function(require,module,exports){
 exports.AbstractLevelDOWN    = require('./abstract-leveldown')
 exports.AbstractIterator     = require('./abstract-iterator')
 exports.AbstractChainedBatch = require('./abstract-chained-batch')
@@ -6120,7 +6120,7 @@ module.exports={
         "spec": ">=1.3.0 <1.4.0",
         "type": "range"
       },
-      "/home/ubuntu/lib/allexjs_modules_dev/allex_leveldblib/node_modules/level-packager"
+      "/home/andra/allexjs/projects/bcsystem/websolutions/casino/bcs_gaming_bo/allexjs_modules_dev/allex_leveldblib/node_modules/level-packager"
     ]
   ],
   "_from": "levelup@>=1.3.0 <1.4.0",
@@ -6154,7 +6154,7 @@ module.exports={
   "_shasum": "bf9db62bdb6188d08eaaa2efcf6cc311916f41fd",
   "_shrinkwrap": null,
   "_spec": "levelup@~1.3.0",
-  "_where": "/home/ubuntu/lib/allexjs_modules_dev/allex_leveldblib/node_modules/level-packager",
+  "_where": "/home/andra/allexjs/projects/bcsystem/websolutions/casino/bcs_gaming_bo/allexjs_modules_dev/allex_leveldblib/node_modules/level-packager",
   "browser": {
     "leveldown": false,
     "leveldown/package": false,
@@ -6458,8 +6458,8 @@ exports.filter = function (range, compare) {
 
 
 
-}).call(this,{"isBuffer":require("../../../../node_modules/allex-toolbox-dev/node_modules/is-buffer/index.js")})
-},{"../../../../node_modules/allex-toolbox-dev/node_modules/is-buffer/index.js":107}],67:[function(require,module,exports){
+}).call(this,{"isBuffer":require("../../../../../../../../../../lib/node_modules/allex-toolbox-dev/node_modules/is-buffer/index.js")})
+},{"../../../../../../../../../../lib/node_modules/allex-toolbox-dev/node_modules/is-buffer/index.js":107}],67:[function(require,module,exports){
 (function (process){
 var path = require('path');
 var fs = require('fs');
@@ -9278,7 +9278,7 @@ function createQueryLDBTask (execlib) {
       }
       return;
     }
-    if (value) {
+    if (lib.isVal(value)) {
       if (this.onPut) {
         this.onPut(kva);
       }
