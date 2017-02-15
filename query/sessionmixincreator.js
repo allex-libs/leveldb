@@ -68,6 +68,9 @@ function createSessionMixin (execlib, Query) {
     db[methodname](filterdesc, defer, starteddefer);
   }
   QuerableUserSessionMixin.queryMethodGenerator = function (servicetodbcb, methodname) {
+    if (!lib.isFunction(servicetodbcb)) {
+      throw new Error('cannot invoke queryMethodGenerator with no servicetodbcb function for methodname '+methodname);
+    }
     return function (filterdesc, scaninitially, defer) {
       var db;
       if (!(this.user && this.user.__service && this.user.__service.aboutToDie)) {
