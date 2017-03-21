@@ -56,15 +56,19 @@ function createQuery (execlib, datafilterslib) {
     this.leveldb = null;
     this.id = null;
   };
-  function traverser (defer, keyvalue) {
-    defer.notify([keyvalue.key, keyvalue.value]);
+  function traverser (query, defer, keyvalue) {
+    if (defer && query.defers && query.traversers) {
+      defer.notify([keyvalue.key, keyvalue.value]);
+    } else {
+      defer = null;
+    }
   };
   Query.prototype.add = function (defer, starteddefer) {
     var traverseevents, traverseitem;
     if (starteddefer) {
       traverseevents = new lib.Fifo();
       traverseitem = this.traversers.push(traverseevents);
-      this.leveldb.traverse(traverser.bind(null, defer), {
+      this.leveldb.traverse(traverser.bind(null, this, defer), {
         keyfilter: this.keyfilter.__descriptor, 
         filter: this.valfilter.__descriptor
       }).then(
@@ -101,10 +105,16 @@ function createQuery (execlib, datafilterslib) {
     }
   };
   Query.prototype.onTraverseDone = function (defer, traverseitem, starteddefer) {
-    var recordcount, deferitem;
+    var recordcount, deferitem, fifo;
+    if (!this.traversers) {
+      return;
+    }
     if (traverseitem) {
       recordcount = traverseitem.content.length;
-      traverseitem.content.drain(defer.notify.bind(defer));
+      fifo = traverseitem.content;
+      if (fifo && fifo.length) {
+        fifo.drain(defer.notify.bind(defer));
+      }
       this.traversers.remove(traverseitem);
     } else {
       recordcount = 0;
