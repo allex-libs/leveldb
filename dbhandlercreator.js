@@ -499,6 +499,25 @@ function createDBHandler (execlib, datafilterslib, encodingMakeup, Query) {
     _q.add(defer, starteddefer);
     return ret;
   };
+  function picker(tobj, item) {
+    if (tobj.item) {
+      console.error('item already exists, traverse needs to pass only 1 item');
+      process.exit(0);
+    }
+    tobj.item = item;
+  }
+  LevelDBHandler.prototype.getFirst = function () {
+    var tobj = {item: null};
+    return this.traverse(picker.bind(null, tobj), {limit: 1}).then(
+      qlib.propertyreturner(tobj, 'item')
+    );
+  };
+  LevelDBHandler.prototype.getLast = function () {
+    var tobj = {item: null};
+    return this.traverse(picker.bind(null, tobj), {limit: 1, reverse: true}).then(
+      qlib.propertyreturner(tobj, 'item')
+    );
+  };
   
   // helpers //
   function dumper(dumperobj, keyvalobj) {
