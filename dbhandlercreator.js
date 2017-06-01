@@ -135,6 +135,16 @@ function createDBHandler (execlib, datafilterslib, encodingMakeup, Query) {
     this.db = null;
     this.dbname = null;
   };
+  LevelDBHandler.prototype.drop = function () {
+    var dbname = this.dbname, d;
+    this.destroy();
+    if (dbname) {
+      d = q.defer();
+      deleteDir(dbname, d.resolve.bind(d));
+      return d.promise;
+    }
+    return q(true);
+  };
 
   function properPutterCB(key, val, defer, err) {
     if (err) {
