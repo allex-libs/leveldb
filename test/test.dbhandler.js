@@ -12,7 +12,8 @@ describe ('LevelDBHandler test', function () {
       starteddefer = q.defer();
 
     DB = new LevelDBHandler ({
-      'dbname' : '_dbtest/test1',
+      'dbname' : ['_dbtest', 'test1'], //'_dbtest/test1',
+      initiallyemptydb: true,
       starteddefer : starteddefer
     });
 
@@ -71,9 +72,13 @@ describe ('LevelDBHandler test', function () {
     });
   });
 
-  it ('Test destroy', function (done) {
-    DB.destroy();
-    done();
+  /*
+  it ('Test destroy', function () {
+    return DB.destroy();
+  });
+  */
+  it ('Test drop', function () {
+    return DB.drop();
   });
   
 });

@@ -23,6 +23,15 @@ function createDBHandler (execlib, datafilterslib, encodingMakeup, Query) {
     defer = null;
   }
 
+  function makePath (path) {
+    if (lib.isString(path)) {
+      return path;
+    }
+    if (lib.isArray(path)) {
+      return Path.join.apply(Path, path);
+    }
+  }
+
   function preparePath(path) {
     var pp = Path.parse(path),
       d = q.defer();
@@ -88,9 +97,9 @@ function createDBHandler (execlib, datafilterslib, encodingMakeup, Query) {
   function LevelDBHandler(prophash) {
     var err;
     encodingMakeup(prophash.dbcreationoptions, lib.uid());
-    this.dbname = prophash.dbname;
+    this.dbname = makePath(prophash.dbname);
     if (!this.dbname) {
-      err = new lib.Error('NO_DBNAME_IN_PROPERTYHASH','Property hash for LevelDBHandler misses the dbname property');
+      err = new lib.Error('NO_DBNAME_IN_PROPERTYHASH','Property hash for LevelDBHandler lacks the dbname property (String or Array of Strings)');
       if (prophash.starteddefer) {
         prophash.starteddefer.reject(err);
         return;
@@ -107,8 +116,8 @@ function createDBHandler (execlib, datafilterslib, encodingMakeup, Query) {
     this.queries = prophash.listenable ? new lib.Map() : null;
     this.setDB(new FakeDB());
     if (prophash.initiallyemptydb) {
-      //console.log(prophash.dbname, 'initiallyemptydb!');
-      deleteDir(prophash.dbname, this.createDB.bind(this, prophash));
+      //console.log(this.dbname, 'initiallyemptydb!');
+      deleteDir(this.dbname, this.createDB.bind(this, prophash));
     } else {
       this.createDB(prophash);
     }
@@ -200,7 +209,7 @@ function createDBHandler (execlib, datafilterslib, encodingMakeup, Query) {
     }
   };
   LevelDBHandler.prototype.createDB = function (prophash) {
-    levelup(prophash.dbname, lib.extend({}, prophash.dbcreationoptions), this.onLevelDBCreated.bind(this, prophash));
+    levelup(this.dbname, lib.extend({}, prophash.dbcreationoptions), this.onLevelDBCreated.bind(this, prophash));
   };
   LevelDBHandler.prototype.onLevelDBCreated = function (prophash, err, db) {
     if (!this.dbname) {
@@ -215,17 +224,17 @@ function createDBHandler (execlib, datafilterslib, encodingMakeup, Query) {
       }
       if(err.message && /IO error.*LOCK/.test(err.message)) {
         if (/already held by process/.test(err.message)) {
-          console.error(process.pid + ' ' + prophash.dbname, 'is currently used by another process');
+          console.error(process.pid + ' ' + this.dbname, 'is currently used by another process');
           lib.runNext(this.createDB.bind(this, prophash), 1000);
         } else {
-          preparePath(prophash.dbname).then(
+          preparePath(this.dbname).then(
             this.createDB.bind(this, prophash),
             this.destroy.bind(this)
           );
         }
         return;
       }
-      console.error(prophash.dbname, 'could not be started now', err);
+      console.error(this.dbname, 'could not be started now', err);
       if (prophash.maxretries) {
         if (!prophash.currentretries) {
           prophash.currentretries = 0;
