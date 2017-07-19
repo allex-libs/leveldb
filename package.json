@@ -1,6 +1,6 @@
 {
   "name": "allex_leveldblib",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "AllexJS lib containing levelup and helpers",
   "main": "index.js",
   "scripts": {
@@ -8,7 +8,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git@gitlab.hers.rs:allex_libs/leveldb"
+    "url": "git@github.com:allex-libs/leveldb.git"
   },
   "bin": {
     "allex-leveldb-convert": "bin/leveldbconvert.js"

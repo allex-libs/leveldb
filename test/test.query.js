@@ -2,7 +2,7 @@
 loadMochaIntegration(require('path').join(__dirname, '../'));
 
 describe ('Query a simple-key DB', function () {
-  loadClientSide(['allex:leveldb:lib']);
+  loadClientSide(['allex_leveldblib']);
   createLevelDBHandlerIt({
     handlerctorname: 'LevelDBHandler',
     instancename: 'db',
@@ -36,7 +36,7 @@ describe ('Query a simple-key DB', function () {
 });
 
 describe ('Query a 2-segment key DB', function () {
-  loadClientSide(['allex:leveldb:lib']);
+  loadClientSide(['allex_leveldblib']);
   createLevelDBHandlerIt({
     handlerctorname: 'LevelDBHandler',
     instancename: 'db',

@@ -1,7 +1,7 @@
 var libLoader = require('./libloader');
 
 function createLib(execlib) {
-  return execlib.loadDependencies('client', ['allex:datafilters:lib', 'allex:buffer:lib'], realCreator.bind(null, execlib));
+  return execlib.loadDependencies('client', ['allex_datafilterslib', 'allex_bufferlib'], realCreator.bind(null, execlib));
 }
 
 function realCreator(execlib, datafilterslib, bufferlib) {

@@ -68,7 +68,7 @@ function run (execlib, leveldblib) {
 }
 
 function main (execlib) {
-  execlib.loadDependencies('client', ['allex:leveldb:lib'], run.bind(null, execlib));
+  execlib.loadDependencies('client', ['allex_leveldblib'], run.bind(null, execlib));
 }
 
 module.exports = main;
