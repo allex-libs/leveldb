@@ -139,7 +139,7 @@ function createLevelDBHookIt (creationhash) {
   var _in = inFCH;
   it('Creating a HookHandler instance named '+_in(creationhash), function () {
     var instancename = _in(creationhash),
-      ctor = getGlobal(creationhash.ctor) || leveldblib.Hook,
+      ctor = getGlobal(creationhash.ctor) || allex_leveldblib.Hook,
       db = creationhash.db,
       p;
     _in = null;

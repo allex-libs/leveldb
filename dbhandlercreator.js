@@ -1,26 +1,20 @@
-var levelup = require('level-browserify'),
-  Path = require('path'),
-  fs = require('fs'),
-  mkdirp = require('mkdirp');
+var levelup = require('level-browserify');
 
-function createDBHandler (execlib, datafilterslib, encodingMakeup, Query) {
+function createDBHandler (execlib, datafilterslib, encodingMakeup, Query, Node) {
   'use strict';
   var lib = execlib.lib,
     q = lib.q,
     qlib = lib.qlib,
-    deleteDir = require('./dirdeleter')(execlib).deleteDirWithCB;
+    Path = Node.Path;
 
-  function onDirMade(defer, err) {
+  function onDirMade(err) {
     var pa;
     if (err && err.code && err.code === 'ENOENT') {
       pa = err.path.split(Path.sep);
       console.log(pa);
-      defer.reject(err);
-      defer = null;
-      return;
+      return q.reject(err);
     }
-    defer.resolve(true);
-    defer = null;
+    return q(true);
   }
 
   function makePath (path) {
@@ -33,10 +27,8 @@ function createDBHandler (execlib, datafilterslib, encodingMakeup, Query) {
   }
 
   function preparePath(path) {
-    var pp = Path.parse(path),
-      d = q.defer();
-    mkdirp(pp.dir, onDirMade.bind(null, d));
-    return d.promise;
+    var pp = Path.parse(path);
+    return Node.Fs.ensureDir(pp.dir).then(onDirMade);
   }
 
   function errorraiser (defer, error) {
@@ -117,7 +109,7 @@ function createDBHandler (execlib, datafilterslib, encodingMakeup, Query) {
     this.setDB(new FakeDB());
     if (prophash.initiallyemptydb) {
       //console.log(this.dbname, 'initiallyemptydb!');
-      deleteDir(this.dbname, this.createDB.bind(this, prophash));
+      Node.Fs.removeWithCb(this.dbname, this.createDB.bind(this, prophash));
     } else {
       this.createDB(prophash);
     }
@@ -148,9 +140,7 @@ function createDBHandler (execlib, datafilterslib, encodingMakeup, Query) {
     var dbname = this.dbname, d;
     this.destroy();
     if (dbname) {
-      d = q.defer();
-      deleteDir(dbname, d.resolve.bind(d));
-      return d.promise;
+      return Node.Fs.remove(dbname);
     }
     return q(true);
   };

@@ -1,4 +1,4 @@
-function realCreator(execlib, datafilterslib, bufferlib) {
+function realCreator(execlib, datafilterslib, bufferlib, Node) {
   'use strict';
   var lib = execlib.lib,
     q = lib.q,
@@ -49,7 +49,7 @@ function realCreator(execlib, datafilterslib, bufferlib) {
   encodingMakeup = require('./encodingmakeupcreator')(execlib, ret, bufferlib);
   querylib = require('./query')(execlib, datafilterslib);
   //Query = require('./querycreator')(execlib, datafilterslib);
-  LevelDBHandler = require('./dbhandlercreator')(execlib, datafilterslib, encodingMakeup, querylib.Query);
+  LevelDBHandler = require('./dbhandlercreator')(execlib, datafilterslib, encodingMakeup, querylib.Query, Node);
   function creator(hash) {
     return new LevelDBHandler(hash);
   }

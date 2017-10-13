@@ -5,7 +5,7 @@ function createLib(execlib) {
 }
 
 function realCreator(execlib, datafilterslib, bufferlib) {
-  return execlib.lib.q(libLoader(execlib, datafilterslib, bufferlib));
+  return execlib.lib.q(libLoader(execlib, datafilterslib, bufferlib, require('allex_nodehelpersserverruntimelib')(execlib.lib)));
 }
 
 

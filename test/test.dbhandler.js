@@ -1,9 +1,10 @@
-var Path = require('path'),
-  RTToolbox = require('allex-rt-toolbox'),
-  Fs = RTToolbox.node.Fs;
-
 describe ('LevelDBHandler test', function () {
   var DB = null;
+  it ('Load Node helpers', function () {
+    var Node = require('allex_nodehelpersserverruntimelib')(lib);
+    setGlobal('Path', Node.Path);
+    setGlobal('Fs', Node.Fs);
+  });
   it ('Load library', function () {
     return setGlobal('Lib', require('..')(execlib));
   });
@@ -78,7 +79,12 @@ describe ('LevelDBHandler test', function () {
   });
   */
   it ('Test drop', function () {
-    return DB.drop();
+    return DB.drop().then(function () {
+      if (Fs.dirExists(Path.resolve(process.cwd(), '_dbtest', 'test1'))) {
+        return q.reject(new Error('DB dir still exists'));
+      }
+      return q(true);
+    });
   });
   
 });

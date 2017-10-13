@@ -8,7 +8,7 @@ function createLevelDBHandlerIt(creationhash) {
   var _ctrn = ctrnFCH, _in = inFCH;
   it('Creating an instance of '+_ctrn(creationhash)+' named '+_in(creationhash), function () {
     var ctorname = _ctrn(creationhash),
-      ctor = leveldblib[ctorname],
+      ctor = allex_leveldblib[ctorname],
       instancename = _in(creationhash),
       d = creationhash.starteddefer || q.defer(),
       ret;
