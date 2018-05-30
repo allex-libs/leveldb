@@ -1,6 +1,6 @@
 {
   "name": "allex_leveldblib",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "AllexJS lib containing levelup and helpers",
   "main": "index.js",
   "scripts": {
@@ -14,7 +14,7 @@
     "allex-leveldb-convert": "bin/leveldbconvert.js"
   },
   "dependencies": {
-    "level-browserify": "1.1.0",
+    "level-browserify": "1.1.2",
     "node-int64": "0.4.x",
     "allex_nodehelpersserverruntimelib": "1.x"
   },
