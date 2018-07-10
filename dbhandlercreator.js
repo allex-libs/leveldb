@@ -1,5 +1,19 @@
 var levelup = require('level-browserify');
 
+var _LockErrorPattern = /IO error.*LOCK/,
+  _AccessCollisionPatterns = [
+    /already held by process/,
+    /Resource temporarily unavailable/
+  ];
+
+function match (errmessage, pattern) {
+  return pattern.test(errmessage);
+}
+
+function isACollisionError (errmessage) {
+  return _AccessCollisionPatterns.some(match.bind(null, errmessage));
+}
+
 function createDBHandler (execlib, datafilterslib, encodingMakeup, Query, Node) {
   'use strict';
   var lib = execlib.lib,
@@ -212,8 +226,8 @@ function createDBHandler (execlib, datafilterslib, encodingMakeup, Query, Node) 
       if (prophash.debugcreation) {
         console.error(err);
       }
-      if(err.message && /IO error.*LOCK/.test(err.message)) {
-        if (/already held by process/.test(err.message)) {
+      if(err.message && _LockErrorPattern.test(err.message)) {
+        if (isACollisionError(err.message)) {
           console.error(process.pid + ' ' + this.dbname, 'is currently used by another process');
           lib.runNext(this.createDB.bind(this, prophash), 1000);
         } else {
