@@ -92,12 +92,12 @@ function createHook (execlib, datafilterslib) {
       dbkey = dbkeys.shift(),
       pflar,
       oldc = this.onLevelDBDataChanged.bind(this);
-    defer = defer || q.defer();
-    if (dbkl>0) {
-      pflar = this.pickFromLevelDBAndReportForArrayDBKeys.bind(this, dbkeys, defer);
-    } else {
-      pflar = defer.resolve.bind(defer, true);
+    if (dbkl<1) {
+      defer.resolve(true)
+      return defer.promise;
     }
+    defer = defer || q.defer();
+    pflar = this.pickFromLevelDBAndReportForArrayDBKeys.bind(this, dbkeys, defer);
     this.leveldb.get(dbkey).then(function (val) {
       oldc(dbkey, val);
       if (pflar) {

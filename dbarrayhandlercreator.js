@@ -137,10 +137,10 @@ function createDBArray(execlib, leveldblib) {
     }
   };
   DBArrayHandler.prototype.manyPutterStartFromOne = function(container, item) {
-    container.push(['put', [++this.tail, item]], 0);
+    container.add(['put', [++this.tail, item]], 0);
   };
   DBArrayHandler.prototype.manyPutter = function(container, item) {
-    container.push(['put', [this.tail++, item]], 0);
+    container.add(['put', [this.tail++, item]], 0);
   };
   DBArrayHandler.prototype.pushMany = function (itemcontainer, defer) {
     console.log(this.head, this.tail, 'pushMany', itemcontainer.length);
@@ -159,10 +159,10 @@ function createDBArray(execlib, leveldblib) {
     }
   };
   DBArrayHandler.prototype.manyShifterStartFromOne = function(container) {
-    container.push(['del', [++this.head]], 0);
+    container.add(['del', [++this.head]], 0);
   };
   DBArrayHandler.prototype.manyShifter = function(container) {
-    container.push(['del', [this.head++]], 0);
+    container.add(['del', [this.head++]], 0);
   }
   DBArrayHandler.prototype.shiftMany = function (howmany, defer) {
     this.whenFree(this.doShiftMany.bind(this, howmany, defer));
@@ -174,7 +174,12 @@ function createDBArray(execlib, leveldblib) {
       d = q.defer();
     d.promise.done(
       function (finalizer) {
-        defer.resolve({items:items, finalizer:finalizer});
+        if (defer) {
+          console.log('resolving defer');
+          defer.resolve({items:items, finalizer:finalizer});
+        } else {
+          console.log('what is defer?', defer);
+        }
         items = null;
         defer = null;
       },
@@ -193,7 +198,6 @@ function createDBArray(execlib, leveldblib) {
       console.error(e);
     }
     howmany = null;
-    defer = null;
   };
   DBArrayHandler.prototype.pop = function (defer) {
     if (this.head === Infinity) {

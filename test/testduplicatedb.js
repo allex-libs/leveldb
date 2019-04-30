@@ -1,3 +1,4 @@
+//allexrun
 function eventuallyClose (db) {
   setTimeout(db.destroy.bind(db), 5000);
 }

@@ -1,4 +1,4 @@
-var levelup = require('level-browserify');
+var levelup = require('level');
 
 var _LockErrorPattern = /IO error.*LOCK/,
   _AccessCollisionPatterns = [
