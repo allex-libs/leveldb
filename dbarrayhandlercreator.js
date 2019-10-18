@@ -52,7 +52,7 @@ function createDBArray(execlib, leveldblib) {
   DBArrayHandler.prototype.setDB = function (db, prophash) {
     QueueableHandler.prototype.setDB.call(this, db, prophash);
     if (this.db && this.db.createReadStream) {
-      this.traverse(this.onInitTraversal.bind(this)).done(
+      this.doFirstAndLast().done(
         this.onInitDone.bind(this, prophash)
       );
     }
@@ -74,16 +74,24 @@ function createDBArray(execlib, leveldblib) {
     }
     prophash = null;
   };
-  DBArrayHandler.prototype.onInitTraversal = function (item) {
+  DBArrayHandler.prototype.doFirstAndLast = function () {
+    return this.getFirst().then(
+      this.initHeadTail.bind(this, true)
+    ).then(
+      this.getLast.bind(this)
+    ).then(
+      this.initHeadTail.bind(this, false)
+    );
+  };
+  DBArrayHandler.prototype.initHeadTail = function (ishead, item) {
+    if (!(item && lib.isNumber(item.key))) {
+      return;
+    }
     if (this.head === null) {
       return;
     }
-    if (item.key<this.head) {
-      this.head = item.key;
-    }
-    if (item.key>this.tail) {
-      this.tail = item.key;
-    }
+    this[ishead ? 'head' : 'tail'] = item.key;
+    return q(this);
   };
   DBArrayHandler.prototype.doMany = function (puttername, itemcontainer, defer) {
     //console.log('doMany', puttername, itemcontainer.length ? itemcontainer.length : itemcontainer);
