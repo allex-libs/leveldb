@@ -9358,7 +9358,7 @@ function createKnownLengthInsertJob(execlib, JobBase) {
 module.exports = createKnownLengthInsertJob;
 
 },{}],100:[function(require,module,exports){
-module.exports = require('./libloader')(ALLEX, ALLEX.execSuite.libRegistry.register('allex_datafilterslib'), ALLEX.execSuite.libRegistry.register('allex_bufferlib'), require('./fakenodehelpers'));
+module.exports = require('./libloader')(ALLEX, ALLEX.execSuite.libRegistry.get('allex_datafilterslib'), ALLEX.execSuite.libRegistry.get('allex_bufferlib'), require('./fakenodehelpers'));
 
 },{"./fakenodehelpers":26,"./libloader":31}],101:[function(require,module,exports){
 (function (global){
