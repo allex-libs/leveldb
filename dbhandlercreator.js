@@ -52,7 +52,20 @@ function createDBHandler (execlib, datafilterslib, encodingMakeup, Query, Node) 
     defer = null;
   }
 
-  function FakeDB() {
+  function retryOnOtherLockError (ldbhandler, prophash){
+    if (!(
+      ldbhandler &&
+      ldbhandler.dbname 
+    )) {
+      return;
+    }
+    preparePath(ldbhandler.dbname).then(
+      ldbhandler.createDB.bind(ldbhandler, prophash),
+      ldbhandler.destroy.bind(ldbhandler)
+    );
+  }
+  
+    function FakeDB() {
     this.q = new lib.Fifo();
   }
   FakeDB.prototype.put = function (key, val, options, cb) {
@@ -231,10 +244,8 @@ function createDBHandler (execlib, datafilterslib, encodingMakeup, Query, Node) 
           console.error(process.pid + ' ' + this.dbname, 'is currently used by another process');
           lib.runNext(this.createDB.bind(this, prophash), 1000);
         } else {
-          preparePath(this.dbname).then(
-            this.createDB.bind(this, prophash),
-            this.destroy.bind(this)
-          );
+          console.error(process.pid + ' ' + this.dbname, err.message);
+          lib.runNext(retryOnOtherLockError.bind(null, this, prophash), 1000);
         }
         return;
       }

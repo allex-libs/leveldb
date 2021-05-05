@@ -1,3 +1,22 @@
+function createLDBHandler (dbname) {
+    var LevelDBHandler = Lib.LevelDBHandler,
+        starteddefer = q.defer(),
+        ret = starteddefer.promise;
+
+    new LevelDBHandler ({
+        'dbname' : dbname,
+        initiallyemptydb: true,
+        starteddefer : starteddefer
+    });
+
+    return ret.then (function (ldbhandler) {
+        if (!Fs.dirExists(Path.resolve(process.cwd(), '_dbtest', 'test1'))) {
+            throw new Error('Dir does not exist');
+        }
+        return ldbhandler;
+    });
+}
+
 describe ('LevelDBHandler test', function () {
   it ('Load Node helpers', function () {
     var Node = require('allex_nodehelpersserverruntimelib')(lib);
@@ -7,24 +26,14 @@ describe ('LevelDBHandler test', function () {
   it ('Load library', function () {
     return setGlobal('Lib', require('..')(execlib));
   });
-  it ('Test creation', function (done) {
-    var LevelDBHandler = Lib.LevelDBHandler,
-      starteddefer = q.defer();
-
-    new LevelDBHandler ({
-      'dbname' : ['_dbtest', 'test1'], //'_dbtest/test1',
-      initiallyemptydb: true,
-      starteddefer : starteddefer
-    });
-
-    starteddefer.promise.done (function (ldbhandler) {
-      if (!Fs.dirExists(Path.resolve(process.cwd(), '_dbtest', 'test1'))) {
-        done (new Error('Dir does not exist'));
-        return;
-      }
-      setGlobal('DB', ldbhandler);
-      done();
-    }, done.bind(null));
+  it ('Test creation', function () {
+    return setGlobal('DB', createLDBHandler(['_dbtest', 'test1']), 'ldb');
+  });
+  it ('Test creation on path (make it fail by chowning _dbtest1 to some other user)', function () {
+    return setGlobal('DB1', createLDBHandler('_dbtest1/test1'), 'ldb');
+  });
+  it ('Test creation again', function () {
+    return setGlobal('DB1', createLDBHandler(['_dbtest', 'test1']), 'ldb');
   });
 
   it ('Test simple put after db is created', function (done) {
@@ -77,7 +86,6 @@ describe ('LevelDBHandler test', function () {
   it ('Test destroy', function () {
     return DB.destroy();
   });
-  */
   it ('Test drop', function () {
     return DB.drop().then(function () {
       if (Fs.dirExists(Path.resolve(process.cwd(), '_dbtest', 'test1'))) {
@@ -86,5 +94,6 @@ describe ('LevelDBHandler test', function () {
       return q(true);
     });
   });
+  */
   
 });

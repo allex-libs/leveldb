@@ -1,6 +1,6 @@
 {
   "name": "allex_leveldblib",
-  "version": "1.0.9",
+  "version": "1.0.10",
   "description": "AllexJS lib containing levelup and helpers",
   "main": "index.js",
   "scripts": {
@@ -15,7 +15,7 @@
   },
   "dependencies": {
     "allex_nodehelpersserverruntimelib": "1.x",
-    "level": "5.x",
+    "level": "7.x",
     "node-int64": "0.4.x"
   },
   "keywords": [
